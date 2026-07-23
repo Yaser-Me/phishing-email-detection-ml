@@ -6,3 +6,15 @@ __pycache__/
 .vscode/
 .idea/
 venv/
+.venv/
+
+# External email data stays local and is never committed.
+data/external/
+data/private/
+data/derived/
+
+# Model files and vocabulary exports may contain sensitive text.
+*.joblib
+*.pkl
+*vocabulary*.txt
+*vocabulary*.csv

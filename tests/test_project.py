@@ -1,16 +1,62 @@
 import json
+import re
+import tempfile
 import unittest
 from pathlib import Path
 
 import pandas as pd
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+
+from phishing_validation import (
+    ANNOTATION_COLUMNS,
+    CAMPAIGN_SIMILARITY_THRESHOLD,
+    DEFAULT_DATASET,
+    DEFAULT_MANIFEST,
+    EXPECTED_COLUMNS,
+    FINAL_HOLDOUT_LOCKED,
+    PREDICTION_COLUMNS,
+    SAFE_METRIC_COLUMNS,
+    SAFE_SPLIT_COLUMNS,
+    assign_temporal_splits,
+    build_campaign_groups,
+    clean_visible_text,
+    duplicate_statistics,
+    load_manifest,
+    load_spaphish,
+    normalized_duplicate_key,
+    run_development_evaluation,
+    validate_spaphish,
+    vectorize_train_validation,
+    verify_external_files,
+    write_p0_results,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK = ROOT / "phishing_email_detection.ipynb"
-DATASET = ROOT / "data" / "phishing_validation_emails.csv"
+
+
+def make_test_frame(rows):
+    data = []
+    for index, values in enumerate(rows):
+        row = {column: 0 for column in EXPECTED_COLUMNS}
+        row.update(
+            {
+                "hash": f"{index + 1:064x}",
+                "subject": values["subject"],
+                "body": values["body"],
+                "date": values["date"],
+                "urls": None,
+                "attachments_types": None,
+                "attachments_sizes": None,
+                "Label": values["Label"],
+            }
+        )
+        for column in ANNOTATION_COLUMNS:
+            row[column] = (
+                "justificación de prueba" if column.startswith("justif_") else 0
+            )
+        data.append(row)
+    return pd.DataFrame(data, columns=EXPECTED_COLUMNS)
 
 
 class ProjectValidationTests(unittest.TestCase):
@@ -23,50 +69,400 @@ class ProjectValidationTests(unittest.TestCase):
             if cell.get("cell_type") != "code":
                 continue
 
-            lines = [
-                line
-                for line in cell.get("source", [])
-                if not line.lstrip().startswith(("!", "%"))
-            ]
-            source = "".join(lines)
+            source = "".join(cell.get("source", []))
             if source.strip():
                 compile(source, f"{NOTEBOOK.name}:cell-{index}", "exec")
                 compiled += 1
 
         self.assertGreater(compiled, 0)
 
-    def test_dataset_schema_and_labels(self):
-        data = pd.read_csv(DATASET)
+    def test_manifest_values_and_hash_format(self):
+        manifest = load_manifest(DEFAULT_MANIFEST)
 
-        self.assertEqual(list(data.columns), ["Email Text", "Email Type"])
-        self.assertEqual(len(data), 2000)
+        self.assertEqual(manifest["version"], 5)
+        self.assertEqual(manifest["doi"], "10.17632/hz2d6gz7pc.5")
+        self.assertEqual(manifest["license"], "CC BY 4.0")
+        self.assertEqual(manifest["csv"]["rows"], 1395)
+        self.assertEqual(manifest["csv"]["columns"], 47)
         self.assertEqual(
-            set(data["Email Type"].dropna().unique()),
-            {"Safe Email", "Phishing Email"},
+            manifest["frozen_evaluation_rules"]["campaign_similarity_threshold"],
+            CAMPAIGN_SIMILARITY_THRESHOLD,
         )
 
-    def test_core_classifier_pipeline(self):
-        data = pd.read_csv(DATASET).dropna(subset=["Email Text", "Email Type"])
-        train_text, test_text, train_labels, test_labels = train_test_split(
-            data["Email Text"],
-            data["Email Type"],
-            test_size=0.25,
-            random_state=42,
-            stratify=data["Email Type"],
+        for item in manifest["files"]:
+            self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_expected_schema_and_valid_content(self):
+        rows = [
+            {
+                "subject": "Aviso legítimo",
+                "body": "Contenido válido",
+                "date": "01/01/2024",
+                "Label": 0,
+            },
+            {
+                "subject": None,
+                "body": "Verifique su cuenta",
+                "date": "02/01/2024",
+                "Label": 1,
+            },
+        ]
+        df = make_test_frame(rows)
+
+        validated = validate_spaphish(df, expected_rows=2)
+
+        self.assertEqual(list(validated.columns), EXPECTED_COLUMNS)
+        self.assertEqual(set(validated["Label"]), {0, 1})
+        self.assertFalse(
+            (
+                validated["subject"].fillna("").str.strip().eq("")
+                & validated["body"].fillna("").str.strip().eq("")
+            ).any()
         )
 
-        vectorizer = CountVectorizer(max_features=5000)
-        train_features = vectorizer.fit_transform(train_text)
-        test_features = vectorizer.transform(test_text)
+    def test_invalid_label_and_empty_message_are_rejected(self):
+        invalid_label = make_test_frame(
+            [
+                {
+                    "subject": "Mensaje legítimo",
+                    "body": "Contenido",
+                    "date": "01/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Mensaje desconocido",
+                    "body": "Contenido",
+                    "date": "02/01/2024",
+                    "Label": 2,
+                },
+            ]
+        )
+        with self.assertRaises(ValueError):
+            validate_spaphish(invalid_label, expected_rows=2)
 
-        model = LogisticRegression(max_iter=1000)
-        model.fit(train_features, train_labels)
-        predictions = model.predict(test_features)
+        empty_message = make_test_frame(
+            [
+                {
+                    "subject": None,
+                    "body": "   ",
+                    "date": "01/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Mensaje de prueba",
+                    "body": "Contenido",
+                    "date": "02/01/2024",
+                    "Label": 1,
+                },
+            ]
+        )
+        with self.assertRaises(ValueError):
+            validate_spaphish(empty_message, expected_rows=2)
 
-        self.assertEqual(len(predictions), len(test_labels))
-        self.assertTrue(set(predictions).issubset(set(train_labels)))
+    def test_spanish_cleanup_preserves_accents_and_removes_html(self):
+        cleaned = clean_visible_text(
+            "Actualización académica",
+            "<p>Información válida para mañana.</p>",
+        )
+
+        self.assertIn("Actualización", cleaned)
+        self.assertIn("Información", cleaned)
+        self.assertIn("mañana", cleaned)
+        self.assertNotIn("<p>", cleaned)
+        self.assertNotIn("</p>", cleaned)
+
+    def test_normalized_duplicate_key_is_deterministic(self):
+        first = normalized_duplicate_key(
+            "Aviso número 123",
+            "Visite https://example.test/uno",
+        )
+        second = normalized_duplicate_key(
+            "AVISO NÚMERO 456",
+            "Visite https://example.test/dos",
+        )
+
+        self.assertEqual(first, second)
+
+    def test_duplicate_statistics_detect_conflicting_labels(self):
+        stats = duplicate_statistics(
+            pd.Series(["same", "same", "different"]),
+            pd.Series([0, 1, 0]),
+        )
+
+        self.assertEqual(stats["duplicate_groups"], 1)
+        self.assertEqual(stats["redundant_rows"], 1)
+        self.assertEqual(stats["conflicting_label_groups"], 1)
+
+    def test_campaign_grouping_is_deterministic(self):
+        df = make_test_frame(
+            [
+                {
+                    "subject": "Paquete pendiente",
+                    "body": "Revise su paquete ahora",
+                    "date": "01/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Paquete pendiente",
+                    "body": "Revise su paquete ahora",
+                    "date": "02/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Reunión académica",
+                    "body": "La reunión será mañana",
+                    "date": "03/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Reunión académica",
+                    "body": "La reunión será mañana",
+                    "date": "04/01/2024",
+                    "Label": 0,
+                },
+            ]
+        )
+
+        first_groups, first_stats = build_campaign_groups(df)
+        second_groups, second_stats = build_campaign_groups(df)
+
+        self.assertEqual(first_groups.tolist(), second_groups.tolist())
+        self.assertEqual(first_stats, second_stats)
+        self.assertEqual(first_groups.iloc[0], first_groups.iloc[1])
+        self.assertEqual(first_groups.iloc[2], first_groups.iloc[3])
+
+    def test_conflicting_campaign_group_stops_split(self):
+        df = make_test_frame(
+            [
+                {
+                    "subject": "Uno",
+                    "body": "Mensaje uno",
+                    "date": "01/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Dos",
+                    "body": "Mensaje dos",
+                    "date": "02/01/2024",
+                    "Label": 1,
+                },
+            ]
+        )
+
+        with self.assertRaises(ValueError):
+            assign_temporal_splits(df, pd.Series(["same_group", "same_group"]))
+
+    def test_temporal_split_has_no_group_overlap(self):
+        rows = []
+        groups = []
+        for label in [0, 1]:
+            for group_number in range(6):
+                year = 2025 if group_number == 5 else 2024
+                rows.append(
+                    {
+                        "subject": f"Mensaje {label} {group_number}",
+                        "body": "Contenido de prueba",
+                        "date": f"01/01/{year}",
+                        "Label": label,
+                    }
+                )
+                groups.append(f"group_{label}_{group_number}")
+
+        df = make_test_frame(rows)
+        split_frame = assign_temporal_splits(df, pd.Series(groups))
+
+        development = split_frame[
+            split_frame["split"].isin(["train", "validation"])
+        ]
+        overlap = development.groupby("campaign_group")["split"].nunique()
+
+        self.assertTrue((overlap == 1).all())
+        self.assertEqual(
+            set(
+                split_frame.loc[
+                    split_frame["split"] == "locked_2025_holdout",
+                    "date_year",
+                ]
+            ),
+            {2025},
+        )
+        self.assertTrue(FINAL_HOLDOUT_LOCKED)
+
+    def test_vectorizer_is_fitted_only_on_training_text(self):
+        vectorizer, _, _ = vectorize_train_validation(
+            pd.Series(["correo seguro común", "correo seguro común"]),
+            pd.Series(["tokenunicosolovalidacion"]),
+        )
+
+        self.assertNotIn(
+            "tokenunicosolovalidacion",
+            vectorizer.vocabulary_,
+        )
+
+    def test_2025_holdout_is_excluded_from_model_fitting(self):
+        df = make_test_frame(
+            [
+                {
+                    "subject": "Correo común legítimo",
+                    "body": "contenido legítimo compartido",
+                    "date": "01/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Aviso común phishing",
+                    "body": "contenido phishing compartido",
+                    "date": "02/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Correo común legítimo",
+                    "body": "contenido legítimo compartido",
+                    "date": "03/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Aviso común phishing",
+                    "body": "contenido phishing compartido",
+                    "date": "04/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Validación legítima",
+                    "body": "contenido legítimo",
+                    "date": "05/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Validación phishing",
+                    "body": "contenido phishing",
+                    "date": "06/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "tokenunicosoloholdout",
+                    "body": "mensaje legítimo de 2025",
+                    "date": "01/01/2025",
+                    "Label": 0,
+                },
+                {
+                    "subject": "tokenunicosoloholdout",
+                    "body": "mensaje phishing de 2025",
+                    "date": "02/01/2025",
+                    "Label": 1,
+                },
+            ]
+        )
+        split_frame = pd.DataFrame(
+            {
+                "split": [
+                    "train",
+                    "train",
+                    "train",
+                    "train",
+                    "validation",
+                    "validation",
+                    "locked_2025_holdout",
+                    "locked_2025_holdout",
+                ]
+            }
+        )
+
+        _, artifacts = run_development_evaluation(df, split_frame)
+
+        development_hashes = (
+            artifacts["train_hashes"] | artifacts["validation_hashes"]
+        )
+        self.assertTrue(
+            development_hashes.isdisjoint(artifacts["holdout_hashes"])
+        )
+        self.assertNotIn(
+            "tokenunicosoloholdout",
+            artifacts["vectorizer"].vocabulary_,
+        )
+
+    def test_prediction_columns_exclude_metadata_and_annotations(self):
+        self.assertEqual(PREDICTION_COLUMNS, ["subject", "body"])
+        forbidden = {
+            "date",
+            "hash",
+            "Label",
+            "campaign_group",
+            "split",
+            "row_index",
+        }
+
+        self.assertTrue(forbidden.isdisjoint(PREDICTION_COLUMNS))
+        self.assertTrue(set(ANNOTATION_COLUMNS).isdisjoint(PREDICTION_COLUMNS))
+
+    def test_safe_output_schemas(self):
+        audit = pd.DataFrame([{"check": "dataset.rows", "value": 2}])
+        split = pd.DataFrame(
+            [
+                {
+                    "hash": "1" * 64,
+                    "campaign_group": "campaign_test",
+                    "Label": 0,
+                    "date_year": 2024,
+                    "split": "train",
+                }
+            ]
+        )
+        metrics = pd.DataFrame(
+            [
+                {
+                    "model": "Logistic Regression",
+                    "partition": "pre_2025_validation",
+                    "accuracy": 1.0,
+                    "balanced_accuracy": 1.0,
+                    "precision": 1.0,
+                    "recall": 1.0,
+                    "f1": 1.0,
+                    "roc_auc": 1.0,
+                    "true_negative": 1,
+                    "false_positive": 0,
+                    "false_negative": 0,
+                    "true_positive": 1,
+                    "legitimate_support": 1,
+                    "phishing_support": 1,
+                }
+            ],
+            columns=SAFE_METRIC_COLUMNS,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            write_p0_results(audit, split, metrics, temp_dir)
+            saved_split = pd.read_csv(Path(temp_dir) / "split_manifest.csv")
+            saved_metrics = pd.read_csv(
+                Path(temp_dir) / "development_metrics.csv"
+            )
+
+        self.assertEqual(list(saved_split.columns), SAFE_SPLIT_COLUMNS)
+        self.assertEqual(list(saved_metrics.columns), SAFE_METRIC_COLUMNS)
+        self.assertTrue(
+            {"subject", "body", "urls", "model_review_score"}.isdisjoint(
+                saved_split.columns
+            )
+        )
+
+    @unittest.skipUnless(DEFAULT_DATASET.exists(), "SpaPhish external data not available")
+    def test_local_spaphish_copy_and_audit_inputs(self):
+        checks = verify_external_files(DEFAULT_DATASET.parent, DEFAULT_MANIFEST)
+        df = load_spaphish(DEFAULT_DATASET)
+
+        self.assertTrue(checks["matches"].all())
+        self.assertEqual(df.shape, (1395, 47))
+        self.assertEqual(df["Label"].value_counts().to_dict(), {1: 731, 0: 664})
+        self.assertEqual(int(df["subject"].isna().sum()), 3)
+        self.assertEqual(int(df["body"].isna().sum()), 0)
+        self.assertEqual(int(df["date"].isna().sum()), 24)
+
+    def test_manifest_contains_no_invalid_hashes(self):
+        text = DEFAULT_MANIFEST.read_text(encoding="utf-8")
+        hashes = re.findall(r'"sha256":\s*"([^"]+)"', text)
+
+        self.assertGreater(len(hashes), 0)
+        self.assertTrue(all(re.fullmatch(r"[0-9a-f]{64}", value) for value in hashes))
 
 
 if __name__ == "__main__":
     unittest.main()
-

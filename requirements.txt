@@ -1,8 +1,5 @@
-gdown
 jupyter
 matplotlib
-nltk
 pandas
 scikit-learn
 seaborn
-wordcloud

@@ -1,0 +1,67 @@
+{
+  "dataset": "SpaPhish: A Spanish Dataset for Phishing and Psychological Pattern Detection",
+  "version": 5,
+  "published_date": "2026-05-12",
+  "doi": "10.17632/hz2d6gz7pc.5",
+  "landing_page": "https://data.mendeley.com/datasets/hz2d6gz7pc/5",
+  "license": "CC BY 4.0",
+  "license_url": "https://creativecommons.org/licenses/by/4.0/",
+  "downloaded_archive": {
+    "filename": "hz2d6gz7pc-5.zip",
+    "bytes": 40520011,
+    "sha256": "276aaed1aa9fdce04c570a92baf87fa9d27050511ab56dac3ad544dd4ef3e071"
+  },
+  "files": [
+    {
+      "filename": "Spaphish dataset - DiB.csv",
+      "bytes": 5098917,
+      "sha256": "656b2245d58da72d640680e5c2a168673a130b38607f2a427c773bbb167e995e"
+    },
+    {
+      "filename": "README.txt",
+      "bytes": 3212,
+      "sha256": "ce44b6c86de0873f8b5d8baf4aaeb1a1710916e81966b97bbc549cfd294ab7ca"
+    },
+    {
+      "filename": "dataset_schema.json",
+      "bytes": 17798,
+      "sha256": "51d501037e05f2dd117f8d46c4131d08971fa1f21b220bcc401670741605cdba"
+    },
+    {
+      "filename": "annotation_guidelines.pdf",
+      "bytes": 256271,
+      "sha256": "8f6230bdf67994c5125ee8230f84ba1a36dd6e25c9d52d6a6f285866897667aa"
+    }
+  ],
+  "csv": {
+    "filename": "Spaphish dataset - DiB.csv",
+    "encoding": "utf-8-sig",
+    "delimiter": ",",
+    "rows": 1395,
+    "columns": 47,
+    "label_column": "Label",
+    "legitimate_label": 0,
+    "phishing_label": 1,
+    "legitimate_rows": 664,
+    "phishing_rows": 731
+  },
+  "frozen_evaluation_rules": {
+    "random_seed": 42,
+    "holdout_year": 2025,
+    "campaign_similarity": "character TF-IDF cosine similarity",
+    "campaign_analyzer": "char_wb",
+    "campaign_ngram_range": [
+      3,
+      5
+    ],
+    "campaign_min_df": 2,
+    "campaign_max_features": 30000,
+    "campaign_sublinear_tf": true,
+    "campaign_similarity_threshold": 0.9,
+    "campaign_rule": "Connected messages at or above the threshold remain in one partition.",
+    "conflict_rule": "A candidate campaign group containing both labels is quarantined and stops evaluation.",
+    "temporal_rule": "If any dated member is from 2025, the complete group moves to the locked holdout.",
+    "undated_rule": "Undated messages outside a 2025 group are excluded from the temporal experiment.",
+    "validation_fraction_of_pre_2025_groups": 0.2
+  }
+}
