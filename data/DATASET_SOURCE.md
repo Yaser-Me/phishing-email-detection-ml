@@ -46,7 +46,7 @@ delimiter. Some source documentation still describes a semicolon delimiter or
 version 4. The downloaded version 5 file and its published hash are treated as
 the source of truth.
 
-## Frozen P0 grouping rules
+## Frozen grouping rules
 
 These rules are frozen before the 2025 holdout is scored:
 
@@ -76,11 +76,11 @@ These rules are frozen before the 2025 holdout is scored:
 8. Remaining pre-2025 groups are split into training and validation with
    `random_state=42`.
 
-The final holdout must not be scored during P0.
+The final holdout must not be scored during development evaluation.
 
 ## Prediction restrictions
 
-The P0 model may use only:
+The model may use only:
 
 - `subject`
 - `body`
@@ -109,4 +109,4 @@ real and artificial messages.
 
 It was useful for the first university notebook, but it could not provide
 credible evaluation evidence. Git history preserves the original file and
-implementation after the P0 removal gate is complete.
+implementation after the replacement decision was complete.

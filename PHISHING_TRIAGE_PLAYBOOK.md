@@ -1,12 +1,12 @@
 # Phishing Triage Playbook
 
-This is a small analyst workflow for the P1A model review score. It is a review
-aid, not an automatic blocking rule.
+This is a small analyst workflow for the text-only model review score. It is a
+review aid, not an automatic blocking rule.
 
 ## Decision flow
 
 1. Receive a model-prioritized message and record the score as model inference.
-2. Record what is actually available: P1A has only subject and visible body text.
+2. Record what is actually available: this workflow has only subject and visible body text.
 3. Review visible indicators such as urgency, account action, payment change,
    credential request, prize, attachment reference, or impersonation wording.
 4. Separate direct text evidence from what the model inferred.
@@ -19,7 +19,7 @@ aid, not an automatic blocking rule.
 
 ## Practical checklist
 
-| Check | P1A text-only evidence | Safe follow-up |
+| Check | Text-only evidence | Safe follow-up |
 |---|---|---|
 | Sender and reply-to relationship | Unavailable | Compare sender and reply-to domains. |
 | Sender-domain alignment | Unavailable | Verify the claimed organization through a trusted channel. |
@@ -33,7 +33,8 @@ aid, not an automatic blocking rule.
 | Urgency or pressure | Sometimes visible | Treat it as a review signal, not proof. |
 | Similarity to known campaigns | Unavailable for one case | Search approved security records for related reports. |
 
-The SpaPhish file has some technical metadata, but P1A deliberately uses only
-subject and body. These checks therefore were not performed on the P1A cases.
+The SpaPhish file has some technical metadata, but this workflow deliberately
+uses only subject and body. These checks therefore were not performed on the
+casebook examples.
 The final holdout's 107 false negatives show why a low score must not end review
 when other available evidence is suspicious.

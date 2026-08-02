@@ -1,4 +1,4 @@
-"""Reproducible SpaPhish v5 checks and P0 development evaluation."""
+"""Reproducible SpaPhish v5 checks and development evaluation."""
 
 import argparse
 import hashlib
@@ -320,7 +320,7 @@ def load_split_manifest(split_path=DEFAULT_SPLIT_MANIFEST):
 
 
 def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
-    """Load only the frozen training and validation records needed for P1A."""
+    """Load only the frozen training and validation records for development work."""
     split_frame = load_split_manifest(split_path)
 
     development_split = split_frame[
@@ -354,13 +354,13 @@ def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MA
     if set(development_rows["hash"]) != allowed_hashes:
         raise ValueError("The external CSV does not match the frozen development hashes.")
     if not development_rows["split"].isin(["train", "validation"]).all():
-        raise ValueError("P1A attempted to load a non-development partition.")
+        raise ValueError("Development evaluation attempted to load a non-development partition.")
 
     return development_rows
 
 
 def load_final_evaluation_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
-    """Load only permitted development rows and the locked 2025 holdout for P1B."""
+    """Load permitted development rows and the locked 2025 holdout."""
     split_frame = load_split_manifest(split_path)
     allowed_splits = {"train", "validation", "locked_2025_holdout"}
     evaluation_split = split_frame[split_frame["split"].isin(allowed_splits)].copy()
@@ -639,12 +639,12 @@ def vectorize_train_validation(train_text, validation_text):
 
 
 def fit_primary_validation_model(development_rows):
-    """Fit the P1A Logistic Regression model on training rows only."""
+    """Fit the Logistic Regression model on training rows only."""
     required_columns = {"hash", "subject", "body", "Label", "split"}
     if not required_columns.issubset(development_rows.columns):
-        raise ValueError("P1A development rows are missing required columns.")
+        raise ValueError("Development rows are missing required columns.")
     if not development_rows["split"].isin(["train", "validation"]).all():
-        raise ValueError("The final holdout cannot enter P1A model fitting.")
+        raise ValueError("The final holdout cannot enter development model fitting.")
 
     train_mask = development_rows["split"].eq("train")
     validation_mask = development_rows["split"].eq("validation")
@@ -712,7 +712,7 @@ def build_sanitized_validation_triage(
     expected_case_ids = set(TRIAGE_CASE_NOTES)
     if set(errors["case_id"]) != expected_case_ids:
         raise ValueError(
-            "Validation errors do not match the manually reviewed P1A case set. "
+            "Validation errors do not match the manually reviewed case set. "
             "Review the result before publishing new case notes."
         )
 
@@ -935,7 +935,7 @@ def run_final_evaluation(evaluation_rows):
 
 
 def build_dataset_audit(df, campaign_groups, campaign_stats, split_frame):
-    """Build the P0 audit from the verified CSV."""
+    """Build the dataset audit from the verified CSV."""
     exact_keys = df.apply(
         lambda row: exact_duplicate_key(row["subject"], row["body"]),
         axis=1,
@@ -1033,7 +1033,7 @@ def build_dataset_audit(df, campaign_groups, campaign_stats, split_frame):
 
 
 def write_p0_results(audit, split_frame, metrics, results_dir=DEFAULT_RESULTS):
-    """Write only aggregate or identifier-only P0 evidence."""
+    """Write only aggregate or identifier-only dataset-audit evidence."""
     results_path = Path(results_dir)
     results_path.mkdir(parents=True, exist_ok=True)
 
@@ -1055,7 +1055,7 @@ def write_validation_triage_results(
     confusion_table,
     results_dir=DEFAULT_RESULTS,
 ):
-    """Write P1A aggregate and sanitized validation evidence only."""
+    """Write aggregate and sanitized validation evidence only."""
     results_path = Path(results_dir)
     results_path.mkdir(parents=True, exist_ok=True)
     if list(metrics.columns) != SAFE_METRIC_COLUMNS:
@@ -1152,7 +1152,7 @@ def run_final_evaluation_once(
     results_dir=DEFAULT_RESULTS,
     private_predictions_path=PRIVATE_FINAL_PREDICTIONS,
 ):
-    """Run P1B once after the configuration and P1A evidence are frozen."""
+    """Run the final evaluation once after configuration and case review are frozen."""
     final_outputs = [
         Path(private_predictions_path),
         Path(results_dir) / "final_holdout_metrics.csv",
@@ -1161,7 +1161,7 @@ def run_final_evaluation_once(
     ]
     if any(path.exists() for path in final_outputs):
         raise ValueError(
-            "Final holdout predictions already exist. P1B does not permit a rerun."
+            "Final holdout predictions already exist. The final evaluation does not permit a rerun."
         )
 
     file_checks = verify_external_files(Path(data_path).parent, manifest_path)
@@ -1186,9 +1186,9 @@ def run_validation_triage(
     split_path=DEFAULT_SPLIT_MANIFEST,
     results_dir=DEFAULT_RESULTS,
 ):
-    """Run P1A validation triage without loading records into a holdout model path."""
+    """Run validation triage without loading records into a holdout model path."""
     if not FINAL_HOLDOUT_LOCKED:
-        raise ValueError("P1A requires the final holdout to remain locked.")
+        raise ValueError("Validation triage requires the final holdout to remain locked.")
 
     file_checks = verify_external_files(Path(data_path).parent, manifest_path)
     development_rows = load_development_rows(data_path, split_path)
@@ -1212,7 +1212,7 @@ def run_validation_triage(
 
 
 def run_p0(data_path=DEFAULT_DATASET, manifest_path=DEFAULT_MANIFEST, results_dir=DEFAULT_RESULTS):
-    """Run the complete P0 audit and development evaluation."""
+    """Run the complete dataset audit and development evaluation."""
     external_dir = Path(data_path).parent
     file_checks = verify_external_files(external_dir, manifest_path)
     df = load_spaphish(data_path)
@@ -1232,12 +1232,12 @@ def main():
     parser.add_argument(
         "--score-final-holdout",
         action="store_true",
-        help="Run the approved P1B final evaluation exactly once.",
+        help="Run the frozen final evaluation exactly once.",
     )
     parser.add_argument(
         "--validation-triage",
         action="store_true",
-        help="Run P1A validation triage without scoring the 2025 holdout.",
+        help="Run validation triage without scoring the 2025 holdout.",
     )
     args = parser.parse_args()
 
@@ -1249,7 +1249,7 @@ def main():
             args.results_dir,
         )
         print("===============================")
-        print("SpaPhish P1B Final Evaluation")
+        print("SpaPhish Final Evaluation")
         print("===============================")
         print("Verified files:", int(file_checks["matches"].sum()))
         print("\nLocked 2025 holdout metrics:")
@@ -1269,7 +1269,7 @@ def main():
             args.results_dir,
         )
         print("===========================")
-        print("SpaPhish P1A Validation Triage")
+        print("SpaPhish Validation Triage")
         print("===========================")
         print("Verified files:", int(file_checks["matches"].sum()))
         print("Sanitized validation cases:", len(triage))
@@ -1287,7 +1287,7 @@ def main():
     )
 
     print("=======================")
-    print("SpaPhish P0 Validation")
+    print("SpaPhish Dataset Audit and Development Evaluation")
     print("=======================")
     print("Verified files:", int(file_checks["matches"].sum()))
     print("Audit checks:", len(audit))

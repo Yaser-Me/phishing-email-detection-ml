@@ -9,14 +9,14 @@ Spanish-Language Phishing Detection Validation and Analyst Triage.
 - Active data: SpaPhish v5, Spanish-language email records.
 - Input: subject and visible body only.
 - Model: word TF-IDF and Logistic Regression with `class_weight="balanced"`.
-- Comparator: Multinomial Naive Bayes in the P0 development result.
+- Comparator: Multinomial Naive Bayes in the development evaluation.
 - Never-use fields: label, date, row/file order, hash, split, campaign group,
   technical metadata, persuasion annotations, and human-written justifications.
 
 ## Intended use
 
-Use the model review score to prioritize an analyst's review of a message. P1A
-documents the eight pre-2025 validation mistakes and the follow-up evidence an
+Use the model review score to prioritize an analyst's review of a message. The
+development casebook documents eight mistakes and the follow-up evidence an
 analyst would need.
 
 > The model review score prioritizes analyst review. It is not proof that an email is malicious.
@@ -32,8 +32,8 @@ analyst would need.
 
 The locked split uses pre-2025 training and validation records only. Logistic
 Regression recorded 0.953 accuracy, 0.938 balanced accuracy, 0.926 F1, 2 false
-positives, and 6 false negatives on 170 validation emails. The P1A command
-regenerates the sanitized error casebook data and confusion matrix.
+positives, and 6 false negatives on 170 validation emails. The development
+triage command regenerates sanitized case data and the confusion matrix.
 
 ## Final-holdout status
 
@@ -41,7 +41,8 @@ The frozen pipeline was trained on all permitted pre-2025 development records
 and scored the locked 2025 holdout once. It recorded 0.792 accuracy, 0.874
 balanced accuracy, 1.000 phishing precision, 0.747 phishing recall, 0.855 F1,
 0 false positives, and 107 false negatives on 92 legitimate and 423 phishing
-messages. The holdout never entered P1A fitting, prediction, or case review.
+messages. The holdout never entered development fitting, prediction, or case
+review.
 
 Final confusion counts: 92 true negatives, 0 false positives, 316 true
 positives, and 107 false negatives. Zero final false positives does not show

@@ -6,10 +6,10 @@ related messages in one partition, and treats the model output as a **model
 review score** that can support an analyst. It does not automatically declare
 an email malicious.
 
-P1A adds a development-only validation casebook and analyst-triage workflow.
-P1B freezes the configuration, then evaluates the later 2025 holdout once.
+The workflow includes development error analysis and one later-period 2025
+holdout evaluation with frozen settings.
 
-## Review this project in five minutes
+## Quick review
 
 1. Read this README for the project decision and key dataset findings.
 2. Review [DETECTION_CARD.md](DETECTION_CARD.md).
@@ -22,8 +22,7 @@ P1B freezes the configuration, then evaluates the later 2025 holdout once.
    [PHISHING_TRIAGE_PLAYBOOK.md](PHISHING_TRIAGE_PLAYBOOK.md).
 7. Inspect [tests/test_project.py](tests/test_project.py) for leakage,
    holdout-isolation, and sanitization checks.
-8. Use [PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for the full
-   explanation and interview practice.
+8. Read [EVALUATION_NOTES.md](EVALUATION_NOTES.md) for the key fixed decisions.
 
 ## What the project demonstrates
 
@@ -62,7 +61,7 @@ redistribution. They may contain historical URLs and identifier-like values.
 See [data/DATASET_SOURCE.md](data/DATASET_SOURCE.md) for the download,
 attribution, integrity, privacy, and split rules.
 
-## P0 findings
+## Dataset audit
 
 The audit reproduced these important findings:
 
@@ -95,17 +94,19 @@ are development results, not final or production results.
 The generated evidence is in `results/dataset_audit.csv`,
 `results/split_manifest.csv`, and `results/development_metrics.csv`.
 
-P1A repeats the Logistic Regression validation result without using the holdout:
-2 false positives, 6 false negatives, 0.953 accuracy, 0.938 balanced accuracy,
-and 0.926 F1. Its generated evidence is `results/validation_triage.csv`,
+## Development validation
+
+Logistic Regression was fitted on training text only and evaluated on the
+pre-2025 validation partition: 2 false positives, 6 false negatives, 0.953
+accuracy, 0.938 balanced accuracy, and 0.926 phishing F1. Its generated
+evidence is `results/validation_triage.csv`,
 `results/validation_error_summary.csv`, and the development confusion matrix.
 The cases are sanitized summaries, not raw email publications.
 
-## P1B final result
+## Final 2025 holdout
 
-After the P1A correction, the frozen Logistic Regression configuration was fit
-once on all 853 permitted pre-2025 development records and evaluated on 515
-locked 2025 records. The official artifact-generating command ran once.
+The frozen Logistic Regression configuration was fit once on all 853 permitted
+pre-2025 development records and evaluated on 515 locked 2025 records.
 
 | Metric | Pre-2025 validation | Locked 2025 holdout |
 |---|---:|---:|
@@ -134,20 +135,17 @@ final prediction rows are committed.
 
 | File | Purpose |
 |---|---|
-| `phishing_email_detection.ipynb` | Readable P0 audit and development evaluation |
+| `phishing_email_detection.ipynb` | Readable dataset audit and development evaluation |
 | `phishing_validation.py` | Shared checks, grouping, splitting, and simple models |
 | `data/DATASET_SOURCE.md` | Dataset source, privacy, and historical decision |
 | `data/spaphish_v5_manifest.json` | Official filenames, hashes, and frozen rules |
 | `tests/test_project.py` | Focused checks using synthetic fixtures |
-| `results/` | Reproducible non-sensitive P0, P1A, and P1B evidence |
+| `results/` | Reproducible non-sensitive audit and evaluation evidence |
 | `DETECTION_CARD.md` | One-page purpose, limits, and allowed claims |
 | `VALIDATION_CASEBOOK.md` | Eight reviewed, sanitized validation errors |
 | `FINAL_HOLDOUT_CASEBOOK.md` | Three sanitized final false-negative examples |
 | `PHISHING_TRIAGE_PLAYBOOK.md` | Text-only triage workflow and missing-evidence checks |
-| `PROJECT_OWNERSHIP_GUIDE.md` | Concise learning and interview-defense guide |
-| `AGENTS.md` | Student-level coding and project scope rules |
-| `DECISION_LOG.md` | Short record of dataset, grouping, and final-evaluation decisions |
-| `legacy/` | Archived university report and presentation; not current evidence |
+| `EVALUATION_NOTES.md` | Short record of the key evaluation decisions |
 
 ## Run locally
 
@@ -163,7 +161,7 @@ python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Run the reproducible P0 workflow:
+Run the dataset audit and development evaluation:
 
 ```powershell
 python phishing_validation.py
@@ -171,7 +169,7 @@ python -m unittest discover -s tests -v
 jupyter nbconvert --execute --to notebook --inplace phishing_email_detection.ipynb
 ```
 
-Run the P1A development-only triage workflow:
+Run the development-only triage workflow:
 
 ```powershell
 python phishing_validation.py --validation-triage
@@ -181,10 +179,10 @@ It regenerates primary validation metrics, the eight reviewed sanitized case
 records, an aggregate error summary, and a development confusion matrix. It
 does not put 2025 holdout records into fitting, prediction, or triage.
 
-The `--score-final-holdout` command is reserved for one P1B final run after the
-model settings, threshold handling, and analyst case analysis are frozen.
+The `--score-final-holdout` command is reserved for one final run after model
+settings, threshold handling, and analyst case analysis are frozen.
 
-The frozen P1B command is:
+The final-evaluation command is:
 
 ```powershell
 python phishing_validation.py --score-final-holdout
@@ -192,20 +190,7 @@ python phishing_validation.py --score-final-holdout
 
 It fits the frozen Logistic Regression pipeline once on all permitted pre-2025
 development records, then scores the locked 2025 partition. It refuses a rerun
-after final predictions exist. The committed result was generated once.
-
-## Portfolio wording
-
-**CV bullet:** Validated real Spanish phishing-email data by auditing duplication
-and campaign overlap, using group-aware later-period evaluation, and documenting
-false-positive and false-negative limits for analyst review.
-
-**GitHub description:** Spanish phishing-email detection validation and
-analyst-assisted triage using real collected data, group-aware temporal
-evaluation, sanitized error analysis, and explicit limitations.
-
-Use the 30-second and 60–90-second answers in
-[PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for interview wording.
+after final predictions exist. The committed results are preserved for review.
 
 ## Honest claims and limitations
 
