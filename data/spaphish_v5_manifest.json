@@ -59,6 +59,7 @@
     ],
     "word_tfidf_min_df": 2,
     "word_tfidf_max_features": 15000,
+    "word_tfidf_sublinear_tf": true,
     "primary_model": "Logistic Regression",
     "primary_model_class_weight": "balanced",
     "primary_model_max_iter": 1000,

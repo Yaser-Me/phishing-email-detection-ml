@@ -5,15 +5,16 @@ three manually reviewed cases are a deterministic score spread: the lowest
 false-negative score, midpoint false-negative score, and score nearest 0.5.
 They are sanitized summaries, not raw email publications.
 
-Terms described as supporting a class are correlational linear-model
-associations, not confirmed malicious indicators or independent evidence.
-They explain the review score only within this frozen model.
+The terms below describe visible wording from the sanitized reviews. The saved
+public final evidence records the model outcome, but the term-contribution
+directions were not recomputed after the final evaluation was closed. They are
+not confirmed malicious indicators or independent evidence.
 
 ## FINAL-FN-LOW
 
 - Actual / predicted / score: phishing / legitimate / 0.201.
-- Terms: `seguridad` supported phishing; organization-like wording and the URL
-  token supported legitimate classification.
+- Terms observed in the sanitized review: `seguridad`, organization-like
+  wording, and a link reference.
 - **What the email text shows:** a workplace-policy notice, a safety reference,
   and a link to a purported policy.
 - **What the model inferred:** legitimate with a very low review score.
@@ -28,8 +29,8 @@ They explain the review score only within this frozen model.
 ## FINAL-FN-MEDIAN
 
 - Actual / predicted / score: phishing / legitimate / 0.400.
-- Terms: `cuenta` and `tu cuenta` supported phishing; privacy-style wording
-  supported legitimate classification.
+- Terms observed in the sanitized review: `cuenta`, `tu cuenta`, and
+  privacy-style wording.
 - **What the email text shows:** an account-report offer, an access claim, and
   contact information.
 - **What the model inferred:** legitimate despite account-related terms.
@@ -44,8 +45,8 @@ They explain the review score only within this frozen model.
 ## FINAL-FN-NEAR-THRESHOLD
 
 - Actual / predicted / score: phishing / legitimate / 0.499.
-- Terms: `alerta`, `24 horas`, and `última` supported phishing; storage-service
-  wording supported legitimate classification.
+- Terms observed in the sanitized review: `alerta`, `24 horas`, `última`, and
+  storage-service wording.
 - **What the email text shows:** urgency and a request to update storage access.
 - **What the model inferred:** legitimate, but only just below the 0.5 review threshold.
 - **Why it could look routine:** a short storage-service update can resemble a

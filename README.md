@@ -180,18 +180,45 @@ It regenerates primary validation metrics, the eight reviewed sanitized case
 records, an aggregate error summary, and a development confusion matrix. It
 does not put 2025 holdout records into fitting, prediction, or triage.
 
-The `--score-final-holdout` command is reserved for one final run after model
-settings, threshold handling, and analyst case analysis are frozen.
+The committed 2025 result is the single official final evaluation. The public
+release permanently closes `--score-final-holdout`: it refuses before reading
+data, including when an alternate output directory is supplied. That prevents a
+fresh clone, a missing private-predictions file, or a normal command from
+creating a second official result or overwriting the committed evidence.
 
-The final-evaluation command is:
+If a deliberate verification of the frozen procedure is needed, use the
+separate private reproduction action and an empty directory **outside** this
+repository:
 
 ```powershell
-python phishing_validation.py --score-final-holdout
+python phishing_validation.py --reproduce-final-holdout --reproduction-output-dir D:\private\spaphish-reproduction
 ```
 
-It fits the frozen Logistic Regression pipeline once on all permitted pre-2025
-development records, then scores the locked 2025 partition. It refuses a rerun
-after final predictions exist. The committed results are preserved for review.
+It verifies the recorded source files, uses the committed manifest and split,
+and writes only clearly prefixed local reproduction files. It cannot write
+inside the repository, overwrite an earlier reproduction, or alter the
+official artifacts. It is not part of normal development and should not be
+used for tuning or to replace the committed final result.
+
+## Verification and troubleshooting
+
+| Situation | Safe check or response |
+|---|---|
+| External dataset is unavailable | Run `python -m unittest discover -s tests -v`. The source-data tests are expected to skip; the public checks must still pass. |
+| Dataset hash or file check fails | Re-download version 5 from the official DOI and compare the four local files with `data/spaphish_v5_manifest.json`. Do not edit a hash to make a local file pass. |
+| Development evidence needs checking | Run `python phishing_validation.py --validation-triage` only after the external files verify. It works only with pre-2025 development rows. |
+| Official final command is refused | This is expected. The recorded result is closed; do not use another `results` directory to create a replacement. Use the explicit private reproduction path only for a deliberate frozen-procedure check. |
+| Notebook check is needed | Execute `jupyter nbconvert --execute --to notebook --inplace phishing_email_detection.ipynb` after installing the pinned dependencies and locally available source data. Review the diff before retaining any output. |
+
+## Evidence and limitations
+
+The committed evidence is deliberately narrow: the dataset manifest and audit
+support provenance and data-quality checks; `split_manifest.csv` and tests
+support grouping and temporal isolation; `validation_triage.csv` and the
+casebooks support sanitized development-error review; and the final metric,
+confusion, and error-summary files record one frozen 2025 outcome. These
+artifacts do not establish live-email performance, independent-organization
+generalization, or a production blocking decision.
 
 ## Honest claims and limitations
 
@@ -213,6 +240,8 @@ and complete exact-message overlap between its random training and test
 partitions. Its saved perfect scores therefore could not provide credible
 phishing-detection evidence.
 
-Git history preserves that original work. The active workflow uses SpaPhish v5
-because its real collected Spanish phishing and legitimate messages allow a
-more honest, same-corpus validation study.
+The sanitized history retains the original notebook source and the replacement
+decision, while intentionally removing the original raw dataset and private
+project artifacts. The active workflow uses SpaPhish v5 because its real
+collected Spanish phishing and legitimate messages allow a more honest,
+same-corpus validation study.

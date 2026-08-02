@@ -15,8 +15,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: legitimate / phishing / 0.557.
 - Text and terms: account-security code message with a self-service link;
-  `cuenta`, `seguridad`, and `clic` supported phishing. The URL token supported
-  legitimate classification.
+  `cuenta`, `seguridad`, and `clic` had positive contributions toward phishing
+  in the fitted development model.
 - **What the email text shows:** account-security wording, a code, and a link.
 - **What the model inferred:** phishing review from overlapping security wording.
 - **What the analyst still needs:** sender, authentication, destination, and
@@ -28,7 +28,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: legitimate / phishing / 0.574.
 - Text and terms: payment receipt with transaction details; `pago`, `cuenta`,
-  `transacción`, and `tarjeta` supported phishing.
+  `transacción`, and `tarjeta` had positive contributions toward phishing in
+  the fitted development model.
 - **What the email text shows:** payment, account, and card wording.
 - **What the model inferred:** phishing review from payment-related language.
 - **What the analyst still needs:** sender, payment history, destination, and expectation.
@@ -40,8 +41,9 @@ They explain the review score only within this fitted development model.
 ### VAL-FN-01
 
 - Actual / predicted / score: phishing / legitimate / 0.327.
-- Text and terms: low-cost trial offer with several links; `here` supported
-  phishing while common English and URL terms supported legitimate classification.
+- Text and terms: low-cost trial offer with several links; `here` had a
+  positive contribution toward phishing, while `mail` and `drive` had negative
+  contributions in the fitted development model.
 - **What the email text shows:** an offer, links, and persuasive marketing language.
 - **What the model inferred:** legitimate, likely because it resembles a newsletter.
 - **What the analyst still needs:** sender reputation, destinations, subscription history, and expectation.
@@ -52,7 +54,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: phishing / legitimate / 0.345.
 - Text and terms: threatening payment-demand message; `cuenta`, `hemos`, and
-  `usd` supported phishing, but common terms supported legitimate overall.
+  `usd` had positive contributions toward phishing in the fitted development
+  model.
 - **What the email text shows:** threats, claimed compromise, urgency, and a payment demand.
 - **What the model inferred:** legitimate, with a low review score.
 - **What the analyst still needs:** sender, headers, payment details, and campaign reports.
@@ -63,7 +66,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: phishing / legitimate / 0.413.
 - Text and terms: short invoice notice with an attachment and password;
-  `factura`, `archivo adjunto`, and `archivo` supported phishing.
+  `factura`, `archivo adjunto`, and `archivo` had positive contributions toward
+  phishing in the fitted development model.
 - **What the email text shows:** invoice, attachment, and password references.
 - **What the model inferred:** legitimate despite limited context.
 - **What the analyst still needs:** attachment details, sender, invoice history, and expectation.
@@ -74,7 +78,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: phishing / legitimate / 0.456.
 - Text and terms: prize notice requesting personal details; `ganador`, `envíe`,
-  and `cuenta` supported phishing.
+  and `cuenta` had positive contributions toward phishing in the fitted
+  development model.
 - **What the email text shows:** a prize claim and a personal-data request.
 - **What the model inferred:** legitimate, likely from mixed common and prize wording.
 - **What the analyst still needs:** sender, reply-to, routing, and contest context.
@@ -85,7 +90,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: phishing / legitimate / 0.465.
 - Text and terms: unexpected personal message asking for a reply; `tengo`,
-  `contigo`, and `por favor` supported phishing while greeting/date wording did not.
+  `contigo`, and `por favor` had positive contributions toward phishing in the
+  fitted development model.
 - **What the email text shows:** unexpected contact and a request for a reply.
 - **What the model inferred:** legitimate because it resembles informal correspondence.
 - **What the analyst still needs:** sender, prior relationship, reply-to, routing, and reports.
@@ -96,7 +102,8 @@ They explain the review score only within this fitted development model.
 
 - Actual / predicted / score: phishing / legitimate / 0.494.
 - Text and terms: invoice and payment-administration request; `cfdi`, `factura`,
-  `entrega`, and `pago` supported phishing.
+  `entrega`, and `pago` had positive contributions toward phishing in the
+  fitted development model.
 - **What the email text shows:** invoice, payment, delivery, and reply-request wording.
 - **What the model inferred:** legitimate because detailed business language can look routine.
 - **What the analyst still needs:** sender, relationship, invoice history, and payment context.

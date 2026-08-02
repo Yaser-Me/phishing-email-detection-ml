@@ -38,6 +38,18 @@ HOLDOUT_YEAR = 2025
 CAMPAIGN_SIMILARITY_THRESHOLD = 0.90
 VALIDATION_FRACTION = 0.20
 FINAL_HOLDOUT_LOCKED = True
+CAMPAIGN_ANALYZER = "char_wb"
+CAMPAIGN_NGRAM_RANGE = (3, 5)
+CAMPAIGN_MIN_DF = 2
+CAMPAIGN_MAX_FEATURES = 30000
+CAMPAIGN_SUBLINEAR_TF = True
+WORD_TFIDF_NGRAM_RANGE = (1, 2)
+WORD_TFIDF_MIN_DF = 2
+WORD_TFIDF_MAX_FEATURES = 15000
+WORD_TFIDF_SUBLINEAR_TF = True
+PRIMARY_MODEL_CLASS_WEIGHT = "balanced"
+PRIMARY_MODEL_MAX_ITER = 1000
+REPRODUCTION_FINAL_PREFIX = "reproduction_final_holdout"
 
 EXPECTED_COLUMNS = [
     "hash",
@@ -145,7 +157,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FP-01": {
         "sanitized_excerpt": "[Redacted account-security code message with a self-service link.]",
         "selected_influential_terms": "cuenta; seguridad; clic",
-        "influential_term_direction": "The listed terms supported phishing; the observed URL token supported legitimate classification.",
+        "selected_term_directions": {
+            "cuenta": "phishing",
+            "seguridad": "phishing",
+            "clic": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "Account-security wording, a code, and a self-service link are visible.",
         "likely_model_mistake": "Security and click language overlaps with phishing patterns.",
         "evidence_not_available": "Sender identity, link destination, authentication results, and user context.",
@@ -155,7 +172,13 @@ TRIAGE_CASE_NOTES = {
     "VAL-FP-02": {
         "sanitized_excerpt": "[Redacted payment-receipt message with transaction and total details.]",
         "selected_influential_terms": "pago; cuenta; transacción; tarjeta",
-        "influential_term_direction": "The listed terms supported phishing classification.",
+        "selected_term_directions": {
+            "pago": "phishing",
+            "cuenta": "phishing",
+            "transacción": "phishing",
+            "tarjeta": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "Payment, transaction, account, and card wording are visible.",
         "likely_model_mistake": "Payment language can appear in both legitimate receipts and phishing lures.",
         "evidence_not_available": "Sender identity, payment history, link destination, and recipient expectation.",
@@ -165,7 +188,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-01": {
         "sanitized_excerpt": "[Redacted low-cost trial offer with several links.]",
         "selected_influential_terms": "here; mail; drive",
-        "influential_term_direction": "'here' supported phishing; the listed common English terms and URL tokens supported legitimate classification.",
+        "selected_term_directions": {
+            "here": "phishing",
+            "mail": "legitimate",
+            "drive": "legitimate",
+        },
+        "influential_term_direction": "'here' had a positive contribution toward phishing; 'mail' and 'drive' had negative contributions in this fitted development model.",
         "visible_text_evidence": "A low-cost trial offer, several links, and persuasive marketing language are visible.",
         "likely_model_mistake": "The message resembles a normal newsletter or marketing message.",
         "evidence_not_available": "Sender reputation, destination domains, subscription history, and user expectation.",
@@ -175,7 +203,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-02": {
         "sanitized_excerpt": "[Redacted threatening message demanding cryptocurrency payment.]",
         "selected_influential_terms": "cuenta; hemos; usd",
-        "influential_term_direction": "The listed terms supported phishing, but more common terms supported legitimate classification overall.",
+        "selected_term_directions": {
+            "cuenta": "phishing",
+            "hemos": "phishing",
+            "usd": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "Threats, a claimed compromise, urgency, and a payment demand are visible.",
         "likely_model_mistake": "A long narrative with many common words received a low review score.",
         "evidence_not_available": "Sender, headers, payment-request details, and related campaign reports.",
@@ -185,7 +218,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-03": {
         "sanitized_excerpt": "[Redacted short invoice notice with an attachment and a password.]",
         "selected_influential_terms": "factura; archivo adjunto; archivo",
-        "influential_term_direction": "The listed terms supported phishing; other common message terms supported legitimate classification.",
+        "selected_term_directions": {
+            "factura": "phishing",
+            "archivo adjunto": "phishing",
+            "archivo": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "An invoice reference, attachment reference, and password are visible.",
         "likely_model_mistake": "The short message has too little context for the model to separate it reliably.",
         "evidence_not_available": "Attachment file details, sender identity, invoice history, and recipient expectation.",
@@ -195,7 +233,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-04": {
         "sanitized_excerpt": "[Redacted prize notice that requests personal details by email.]",
         "selected_influential_terms": "ganador; envíe; cuenta",
-        "influential_term_direction": "The listed terms supported phishing; several common terms supported legitimate classification.",
+        "selected_term_directions": {
+            "ganador": "phishing",
+            "envíe": "phishing",
+            "cuenta": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "A prize claim and a request for personal details are visible.",
         "likely_model_mistake": "Mixed warning and prize language reduced the model review score.",
         "evidence_not_available": "Sender identity, reply-to address, message routing, and whether a contest was entered.",
@@ -205,7 +248,12 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-05": {
         "sanitized_excerpt": "[Redacted unexpected personal message asking for a reply.]",
         "selected_influential_terms": "tengo; contigo; por favor",
-        "influential_term_direction": "The listed terms supported phishing; greetings and date wording supported legitimate classification.",
+        "selected_term_directions": {
+            "tengo": "phishing",
+            "contigo": "phishing",
+            "por favor": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "An unexpected personal contact and a request for a reply are visible.",
         "likely_model_mistake": "The text contains few direct phishing indicators and resembles informal correspondence.",
         "evidence_not_available": "Sender identity, prior relationship, reply-to address, routing, and campaign reports.",
@@ -215,7 +263,13 @@ TRIAGE_CASE_NOTES = {
     "VAL-FN-06": {
         "sanitized_excerpt": "[Redacted invoice and payment-administration request.]",
         "selected_influential_terms": "cfdi; factura; entrega; pago",
-        "influential_term_direction": "The listed terms supported phishing; a few common request terms supported legitimate classification.",
+        "selected_term_directions": {
+            "cfdi": "phishing",
+            "factura": "phishing",
+            "entrega": "phishing",
+            "pago": "phishing",
+        },
+        "influential_term_direction": "The listed terms had positive contributions toward the phishing class in this fitted development model.",
         "visible_text_evidence": "Invoice, payment, delivery, and a request to reply through the email channel are visible.",
         "likely_model_mistake": "Detailed business-administration language resembles a legitimate supplier message.",
         "evidence_not_available": "Sender domain, recipient relationship, invoice history, and attachment or payment context.",
@@ -472,11 +526,11 @@ def build_campaign_groups(df, threshold=CAMPAIGN_SIMILARITY_THRESHOLD):
         axis=1,
     )
     vectorizer = TfidfVectorizer(
-        analyzer="char_wb",
-        ngram_range=(3, 5),
-        min_df=2,
-        max_features=30000,
-        sublinear_tf=True,
+        analyzer=CAMPAIGN_ANALYZER,
+        ngram_range=CAMPAIGN_NGRAM_RANGE,
+        min_df=CAMPAIGN_MIN_DF,
+        max_features=CAMPAIGN_MAX_FEATURES,
+        sublinear_tf=CAMPAIGN_SUBLINEAR_TF,
     )
     campaign_features = vectorizer.fit_transform(campaign_text)
     similarities = cosine_similarity(campaign_features, dense_output=True)
@@ -628,10 +682,10 @@ def assign_temporal_splits(df, campaign_groups):
 def vectorize_train_validation(train_text, validation_text):
     """Fit word TF-IDF on training text and transform validation text."""
     vectorizer = TfidfVectorizer(
-        ngram_range=(1, 2),
-        min_df=2,
-        max_features=15000,
-        sublinear_tf=True,
+        ngram_range=WORD_TFIDF_NGRAM_RANGE,
+        min_df=WORD_TFIDF_MIN_DF,
+        max_features=WORD_TFIDF_MAX_FEATURES,
+        sublinear_tf=WORD_TFIDF_SUBLINEAR_TF,
     )
     train_features = vectorizer.fit_transform(train_text)
     validation_features = vectorizer.transform(validation_text)
@@ -654,8 +708,8 @@ def fit_primary_validation_model(development_rows):
         visible_text.loc[validation_mask],
     )
     model = LogisticRegression(
-        class_weight="balanced",
-        max_iter=1000,
+        class_weight=PRIMARY_MODEL_CLASS_WEIGHT,
+        max_iter=PRIMARY_MODEL_MAX_ITER,
         random_state=RANDOM_SEED,
     )
     model.fit(train_features, development_rows.loc[train_mask, "Label"])
@@ -723,14 +777,39 @@ def build_sanitized_validation_triage(
             feature_row = validation_features.getrow(error["validation_position"])
             feature_names = vectorizer.get_feature_names_out()
             contributions = feature_row.data * model.coef_[0][feature_row.indices]
-            available_terms = set(feature_names[feature_row.indices[contributions != 0]])
+            term_contributions = {
+                term: contribution
+                for term, contribution in zip(
+                    feature_names[feature_row.indices], contributions
+                )
+                if contribution != 0
+            }
             selected_terms = {
                 value.strip() for value in note["selected_influential_terms"].split(";")
             }
-            if not selected_terms.issubset(available_terms):
+            expected_directions = note["selected_term_directions"]
+            if selected_terms != set(expected_directions):
+                raise ValueError(
+                    "Reviewed influential-term directions must cover exactly the selected terms."
+                )
+            if not selected_terms.issubset(term_contributions):
                 raise ValueError(
                     "A reviewed influential term is not present in its validation row."
                 )
+            for term, expected_direction in expected_directions.items():
+                contribution = term_contributions[term]
+                has_expected_direction = (
+                    contribution > 0
+                    if expected_direction == "phishing"
+                    else contribution < 0
+                )
+                if expected_direction not in {"phishing", "legitimate"}:
+                    raise ValueError("Unknown reviewed influential-term direction.")
+                if not has_expected_direction:
+                    raise ValueError(
+                        "A reviewed influential-term direction does not match its "
+                        "fitted development-model contribution."
+                    )
         rows.append(
             {
                 "case_id": error["case_id"],
@@ -841,8 +920,8 @@ def run_development_evaluation(df, split_frame):
     )
 
     lr_model = LogisticRegression(
-        class_weight="balanced",
-        max_iter=1000,
+        class_weight=PRIMARY_MODEL_CLASS_WEIGHT,
+        max_iter=PRIMARY_MODEL_MAX_ITER,
         random_state=RANDOM_SEED,
     )
     nb_model = MultinomialNB()
@@ -895,8 +974,8 @@ def run_final_evaluation(evaluation_rows):
         visible_text.loc[holdout_mask],
     )
     model = LogisticRegression(
-        class_weight="balanced",
-        max_iter=1000,
+        class_weight=PRIMARY_MODEL_CLASS_WEIGHT,
+        max_iter=PRIMARY_MODEL_MAX_ITER,
         random_state=RANDOM_SEED,
     )
     model.fit(development_features, evaluation_rows.loc[development_mask, "Label"])
@@ -1102,10 +1181,19 @@ def write_final_evaluation_results(
     confusion_table,
     results_dir=DEFAULT_RESULTS,
     private_predictions_path=PRIVATE_FINAL_PREDICTIONS,
+    artifact_prefix="final_holdout",
+    title="Locked 2025 holdout confusion matrix",
 ):
-    """Save one final result without publishing raw email text or addresses."""
+    """Save final-evaluation artifacts without publishing raw email text or addresses."""
     results_path = Path(results_dir)
     private_path = Path(private_predictions_path)
+    if (
+        results_path.resolve() == DEFAULT_RESULTS.resolve()
+        or private_path.resolve() == PRIVATE_FINAL_PREDICTIONS.resolve()
+    ):
+        raise ValueError(
+            "Official final-holdout artifacts are immutable in this post-evaluation release."
+        )
     if list(metrics.columns) != SAFE_METRIC_COLUMNS:
         raise ValueError("Unsafe final metric columns were requested.")
     if list(prediction_rows.columns) != PRIVATE_FINAL_PREDICTION_COLUMNS:
@@ -1118,9 +1206,13 @@ def write_final_evaluation_results(
     results_path.mkdir(parents=True, exist_ok=True)
     private_path.parent.mkdir(parents=True, exist_ok=True)
     prediction_rows.to_csv(private_path, index=False)
-    metrics.to_csv(results_path / "final_holdout_metrics.csv", index=False)
-    error_summary.to_csv(results_path / "final_holdout_error_summary.csv", index=False)
-    confusion_table.to_csv(results_path / "final_holdout_confusion_matrix.csv", index=False)
+    metrics.to_csv(results_path / f"{artifact_prefix}_metrics.csv", index=False)
+    error_summary.to_csv(
+        results_path / f"{artifact_prefix}_error_summary.csv", index=False
+    )
+    confusion_table.to_csv(
+        results_path / f"{artifact_prefix}_confusion_matrix.csv", index=False
+    )
 
     matrix = confusion_table.pivot(
         index="actual_label",
@@ -1132,7 +1224,7 @@ def write_final_evaluation_results(
     figure, axis = plt.subplots(figsize=(5, 4))
     image = axis.imshow(matrix, cmap="Blues")
     figure.colorbar(image, ax=axis, label="Email records")
-    axis.set_title("Locked 2025 holdout confusion matrix")
+    axis.set_title(title)
     axis.set_xlabel("Predicted label")
     axis.set_ylabel("Actual label")
     axis.set_xticks([0, 1], ["Legitimate", "Phishing"])
@@ -1141,8 +1233,42 @@ def write_final_evaluation_results(
         for column in range(2):
             axis.text(column, row, int(matrix.iloc[row, column]), ha="center", va="center")
     figure.tight_layout()
-    figure.savefig(results_path / "final_holdout_confusion_matrix.png", dpi=150)
+    figure.savefig(results_path / f"{artifact_prefix}_confusion_matrix.png", dpi=150)
     plt.close(figure)
+
+
+def _reproduction_output_paths(reproduction_output_dir):
+    """Return all private output paths reserved for a deliberate reproduction."""
+    output_path = Path(reproduction_output_dir)
+    return [
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_predictions.csv",
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_metrics.csv",
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_error_summary.csv",
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_confusion_matrix.csv",
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_confusion_matrix.png",
+    ]
+
+
+def _validate_reproduction_output_dir(reproduction_output_dir):
+    """Require deliberate final-evaluation reproductions to remain outside Git."""
+    if reproduction_output_dir is None:
+        raise ValueError("A reproduction output directory is required.")
+
+    output_path = Path(reproduction_output_dir).resolve()
+    try:
+        output_path.relative_to(ROOT.resolve())
+    except ValueError:
+        pass
+    else:
+        raise ValueError(
+            "Final-holdout reproductions must write outside the repository."
+        )
+
+    if any(path.exists() for path in _reproduction_output_paths(output_path)):
+        raise ValueError(
+            "The requested reproduction output already exists and will not be overwritten."
+        )
+    return output_path
 
 
 def run_final_evaluation_once(
@@ -1152,20 +1278,26 @@ def run_final_evaluation_once(
     results_dir=DEFAULT_RESULTS,
     private_predictions_path=PRIVATE_FINAL_PREDICTIONS,
 ):
-    """Run the final evaluation once after configuration and case review are frozen."""
-    final_outputs = [
-        Path(private_predictions_path),
-        Path(results_dir) / "final_holdout_metrics.csv",
-        Path(results_dir) / "final_holdout_error_summary.csv",
-        Path(results_dir) / "final_holdout_confusion_matrix.csv",
-    ]
-    if any(path.exists() for path in final_outputs):
-        raise ValueError(
-            "Final holdout predictions already exist. The final evaluation does not permit a rerun."
-        )
+    """Refuse a second official final evaluation in this post-evaluation release."""
+    del data_path, manifest_path, split_path, results_dir, private_predictions_path
+    raise ValueError(
+        "The official final holdout evaluation is permanently closed. "
+        "The committed result is the only official result; use the explicit "
+        "private reproduction workflow if a separate verification is required."
+    )
 
-    file_checks = verify_external_files(Path(data_path).parent, manifest_path)
-    evaluation_rows = load_final_evaluation_rows(data_path, split_path)
+
+def run_final_evaluation_reproduction(
+    data_path=DEFAULT_DATASET,
+    reproduction_output_dir=None,
+):
+    """Reproduce the frozen final procedure privately without touching official artifacts."""
+    if not FINAL_HOLDOUT_LOCKED:
+        raise ValueError("Final-holdout reproduction requires a locked holdout.")
+
+    output_path = _validate_reproduction_output_dir(reproduction_output_dir)
+    file_checks = verify_external_files(Path(data_path).parent, DEFAULT_MANIFEST)
+    evaluation_rows = load_final_evaluation_rows(data_path, DEFAULT_SPLIT_MANIFEST)
     metrics, prediction_rows, error_summary, confusion_table, artifacts = (
         run_final_evaluation(evaluation_rows)
     )
@@ -1174,8 +1306,10 @@ def run_final_evaluation_once(
         prediction_rows,
         error_summary,
         confusion_table,
-        results_dir,
-        private_predictions_path,
+        output_path,
+        output_path / f"{REPRODUCTION_FINAL_PREFIX}_predictions.csv",
+        artifact_prefix=REPRODUCTION_FINAL_PREFIX,
+        title="Private reproduction: locked 2025 holdout confusion matrix",
     )
     return file_checks, metrics, error_summary, confusion_table, artifacts
 
@@ -1232,7 +1366,17 @@ def main():
     parser.add_argument(
         "--score-final-holdout",
         action="store_true",
-        help="Run the frozen final evaluation exactly once.",
+        help="Refuse a second official final evaluation (the public result is closed).",
+    )
+    parser.add_argument(
+        "--reproduce-final-holdout",
+        action="store_true",
+        help="Deliberately reproduce the frozen final procedure outside the repository.",
+    )
+    parser.add_argument(
+        "--reproduction-output-dir",
+        type=Path,
+        help="Required private directory for a separate final-evaluation reproduction.",
     )
     parser.add_argument(
         "--validation-triage",
@@ -1241,24 +1385,35 @@ def main():
     )
     args = parser.parse_args()
 
+    if args.score_final_holdout and args.reproduce_final_holdout:
+        parser.error("Choose either the closed official command or private reproduction.")
+
     if args.score_final_holdout:
-        file_checks, metrics, error_summary, confusion_table, _ = run_final_evaluation_once(
-            args.data,
-            args.manifest,
-            DEFAULT_SPLIT_MANIFEST,
-            args.results_dir,
+        run_final_evaluation_once()
+
+    if args.reproduce_final_holdout:
+        if args.reproduction_output_dir is None:
+            parser.error("--reproduce-final-holdout requires --reproduction-output-dir.")
+        if args.manifest.resolve() != DEFAULT_MANIFEST.resolve():
+            parser.error("Final reproduction requires the committed frozen manifest.")
+        if args.results_dir.resolve() != DEFAULT_RESULTS.resolve():
+            parser.error(
+                "Use --reproduction-output-dir, not --results-dir, for final reproduction."
+            )
+        file_checks, metrics, error_summary, confusion_table, _ = (
+            run_final_evaluation_reproduction(args.data, args.reproduction_output_dir)
         )
         print("===============================")
-        print("SpaPhish Final Evaluation")
+        print("SpaPhish Private Final Reproduction")
         print("===============================")
         print("Verified files:", int(file_checks["matches"].sum()))
-        print("\nLocked 2025 holdout metrics:")
+        print("\nFrozen 2025 holdout reproduction metrics:")
         print(metrics.round(4).to_string(index=False))
-        print("\nLocked 2025 holdout error summary:")
+        print("\nFrozen 2025 holdout reproduction error summary:")
         print(error_summary.to_string(index=False))
-        print("\nLocked 2025 holdout confusion matrix:")
+        print("\nFrozen 2025 holdout reproduction confusion matrix:")
         print(confusion_table.to_string(index=False))
-        print("\nFinal predictions were generated once and saved in ignored private storage.")
+        print("\nPrivate reproduction outputs were written outside the repository.")
         return
 
     if args.validation_triage:

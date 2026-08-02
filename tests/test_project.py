@@ -8,15 +8,33 @@ import pandas as pd
 
 from phishing_validation import (
     ANNOTATION_COLUMNS,
+    CAMPAIGN_ANALYZER,
+    CAMPAIGN_MAX_FEATURES,
+    CAMPAIGN_MIN_DF,
+    CAMPAIGN_NGRAM_RANGE,
+    CAMPAIGN_SUBLINEAR_TF,
     CAMPAIGN_SIMILARITY_THRESHOLD,
     DEFAULT_DATASET,
     DEFAULT_MANIFEST,
+    DEFAULT_RESULTS,
     EXPECTED_COLUMNS,
     FINAL_HOLDOUT_LOCKED,
+    HOLDOUT_YEAR,
     PREDICTION_COLUMNS,
+    PRIMARY_MODEL_CLASS_WEIGHT,
+    PRIMARY_MODEL_MAX_ITER,
+    RANDOM_SEED,
+    REPRODUCTION_FINAL_PREFIX,
     SAFE_METRIC_COLUMNS,
     SAFE_TRIAGE_COLUMNS,
     SAFE_SPLIT_COLUMNS,
+    TRIAGE_CASE_NOTES,
+    VALIDATION_FRACTION,
+    WORD_TFIDF_MAX_FEATURES,
+    WORD_TFIDF_MIN_DF,
+    WORD_TFIDF_NGRAM_RANGE,
+    WORD_TFIDF_SUBLINEAR_TF,
+    _validate_reproduction_output_dir,
     assign_temporal_splits,
     build_campaign_groups,
     clean_visible_text,
@@ -35,6 +53,7 @@ from phishing_validation import (
     validate_spaphish,
     vectorize_train_validation,
     verify_external_files,
+    write_final_evaluation_results,
     write_p0_results,
 )
 
@@ -122,6 +141,67 @@ class ProjectValidationTests(unittest.TestCase):
 
         for item in manifest["files"]:
             self.assertRegex(item["sha256"], r"^[0-9a-f]{64}$")
+
+    def test_manifest_matches_frozen_configuration(self):
+        rules = load_manifest(DEFAULT_MANIFEST)["frozen_evaluation_rules"]
+
+        self.assertEqual(rules["random_seed"], RANDOM_SEED)
+        self.assertEqual(rules["holdout_year"], HOLDOUT_YEAR)
+        self.assertEqual(
+            rules["validation_fraction_of_pre_2025_groups"], VALIDATION_FRACTION
+        )
+        self.assertEqual(rules["campaign_analyzer"], CAMPAIGN_ANALYZER)
+        self.assertEqual(tuple(rules["campaign_ngram_range"]), CAMPAIGN_NGRAM_RANGE)
+        self.assertEqual(rules["campaign_min_df"], CAMPAIGN_MIN_DF)
+        self.assertEqual(rules["campaign_max_features"], CAMPAIGN_MAX_FEATURES)
+        self.assertEqual(rules["campaign_sublinear_tf"], CAMPAIGN_SUBLINEAR_TF)
+        self.assertEqual(
+            tuple(rules["word_tfidf_ngram_range"]), WORD_TFIDF_NGRAM_RANGE
+        )
+        self.assertEqual(rules["word_tfidf_min_df"], WORD_TFIDF_MIN_DF)
+        self.assertEqual(rules["word_tfidf_max_features"], WORD_TFIDF_MAX_FEATURES)
+        self.assertEqual(rules["word_tfidf_sublinear_tf"], WORD_TFIDF_SUBLINEAR_TF)
+        self.assertEqual(rules["primary_model_class_weight"], PRIMARY_MODEL_CLASS_WEIGHT)
+        self.assertEqual(rules["primary_model_max_iter"], PRIMARY_MODEL_MAX_ITER)
+
+    def test_primary_vectorizer_and_model_use_frozen_parameters(self):
+        vectorizer, _, _ = vectorize_train_validation(
+            pd.Series(["correo seguro", "correo seguro", "cuenta urgente", "cuenta urgente"]),
+            pd.Series(["correo seguro", "cuenta urgente"]),
+        )
+        self.assertEqual(vectorizer.get_params()["ngram_range"], WORD_TFIDF_NGRAM_RANGE)
+        self.assertEqual(vectorizer.get_params()["min_df"], WORD_TFIDF_MIN_DF)
+        self.assertEqual(vectorizer.get_params()["max_features"], WORD_TFIDF_MAX_FEATURES)
+        self.assertEqual(vectorizer.get_params()["sublinear_tf"], WORD_TFIDF_SUBLINEAR_TF)
+
+        development_rows = make_test_frame(
+            [
+                {"subject": "legítimo", "body": "correo seguro", "date": "01/01/2024", "Label": 0},
+                {"subject": "legítimo", "body": "correo seguro", "date": "02/01/2024", "Label": 0},
+                {"subject": "phishing", "body": "cuenta urgente", "date": "03/01/2024", "Label": 1},
+                {"subject": "phishing", "body": "cuenta urgente", "date": "04/01/2024", "Label": 1},
+                {"subject": "validación", "body": "correo seguro", "date": "05/01/2024", "Label": 0},
+                {"subject": "validación", "body": "cuenta urgente", "date": "06/01/2024", "Label": 1},
+            ]
+        )[["hash", "subject", "body", "Label"]]
+        development_rows["split"] = ["train", "train", "train", "train", "validation", "validation"]
+        _, artifacts = fit_primary_validation_model(development_rows)
+        model_params = artifacts["model"].get_params()
+        self.assertEqual(model_params["class_weight"], PRIMARY_MODEL_CLASS_WEIGHT)
+        self.assertEqual(model_params["max_iter"], PRIMARY_MODEL_MAX_ITER)
+        self.assertEqual(model_params["random_state"], RANDOM_SEED)
+
+    def test_reviewed_term_direction_metadata_is_complete(self):
+        for note in TRIAGE_CASE_NOTES.values():
+            selected_terms = {
+                term.strip() for term in note["selected_influential_terms"].split(";")
+            }
+            self.assertEqual(selected_terms, set(note["selected_term_directions"]))
+            self.assertTrue(
+                set(note["selected_term_directions"].values()).issubset(
+                    {"phishing", "legitimate"}
+                )
+            )
 
     def test_expected_schema_and_valid_content(self):
         rows = [
@@ -638,17 +718,47 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertTrue(artifacts["development_hashes"].isdisjoint(artifacts["holdout_hashes"]))
         self.assertNotIn("tokenunicosoloholdout", artifacts["vectorizer"].vocabulary_)
 
-    def test_final_command_refuses_existing_prediction_file(self):
+    def test_final_command_is_closed_even_for_alternate_paths(self):
         with tempfile.TemporaryDirectory() as temp_dir:
-            private_path = Path(temp_dir) / "final_holdout_predictions.csv"
-            private_path.touch()
-
-            with self.assertRaisesRegex(ValueError, "does not permit a rerun"):
+            with self.assertRaisesRegex(ValueError, "permanently closed"):
                 run_final_evaluation_once(
                     data_path=Path(temp_dir) / "missing.csv",
                     results_dir=Path(temp_dir) / "results",
-                    private_predictions_path=private_path,
+                    private_predictions_path=Path(temp_dir) / "missing_predictions.csv",
                 )
+
+    def test_final_reproduction_directory_must_be_private_and_new(self):
+        with self.assertRaisesRegex(ValueError, "required"):
+            _validate_reproduction_output_dir(None)
+        with self.assertRaisesRegex(ValueError, "outside the repository"):
+            _validate_reproduction_output_dir(DEFAULT_RESULTS / "reproduction")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_dir = Path(temp_dir) / "reproduction"
+            self.assertEqual(_validate_reproduction_output_dir(output_dir), output_dir.resolve())
+            output_dir.mkdir()
+            (output_dir / f"{REPRODUCTION_FINAL_PREFIX}_metrics.csv").touch()
+            with self.assertRaisesRegex(ValueError, "will not be overwritten"):
+                _validate_reproduction_output_dir(output_dir)
+
+    def test_official_final_artifacts_cannot_be_overwritten_directly(self):
+        empty_metrics = pd.DataFrame(columns=SAFE_METRIC_COLUMNS)
+        empty_predictions = pd.DataFrame(
+            columns=["hash", "actual_label", "predicted_label", "model_review_score"]
+        )
+        empty_errors = pd.DataFrame(
+            columns=["actual_label", "predicted_label", "error_count"]
+        )
+        empty_confusion = pd.DataFrame(
+            columns=["actual_label", "predicted_label", "count"]
+        )
+        with self.assertRaisesRegex(ValueError, "immutable"):
+            write_final_evaluation_results(
+                empty_metrics,
+                empty_predictions,
+                empty_errors,
+                empty_confusion,
+            )
 
     def test_final_casebook_contains_no_raw_contact_or_url_text(self):
         text = FINAL_CASEBOOK.read_text(encoding="utf-8")
@@ -829,6 +939,10 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertTrue(artifacts["train_hashes"].isdisjoint(holdout_hashes))
         self.assertTrue(artifacts["validation_hashes"].isdisjoint(holdout_hashes))
         self.assertEqual(metrics.loc[0, "false_negative"], 6)
+        committed_triage = pd.read_csv(ROOT / "results" / "validation_triage.csv")
+        pd.testing.assert_frame_equal(
+            triage.reset_index(drop=True), committed_triage, check_dtype=False
+        )
 
     def test_frozen_split_manifest_keeps_each_group_in_one_partition(self):
         split_frame = load_split_manifest(ROOT / "results" / "split_manifest.csv")

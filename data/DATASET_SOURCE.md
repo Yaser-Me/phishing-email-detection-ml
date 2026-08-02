@@ -108,5 +108,6 @@ in the original random test split had an exact training-set match. It also mixed
 real and artificial messages.
 
 It supported the initial classifier baseline, but it could not provide credible
-evaluation evidence. Git history preserves the original file and
-implementation after the replacement decision was complete.
+evaluation evidence. The sanitized public history retains the original
+notebook source and replacement decision while intentionally removing the raw
+original file and private project artifacts.
