@@ -1,10 +1,11 @@
 # Spanish-Language Phishing Detection Validation
 
-This university project now focuses on **Spanish-Language Phishing Detection
-Validation and Analyst Triage**. It audits the data before training, keeps
-related messages in one partition, and treats the model output as a **model
-review score** that can support an analyst. It does not automatically declare
-an email malicious.
+This project examines how dataset leakage, repeated email templates, and
+evaluation design affect phishing-classification results. The workflow audits
+real Spanish-language email data, keeps related messages in one partition,
+evaluates a frozen model on a later holdout, and documents where analyst review
+is still required. The model output is a **model review score**; it does not
+automatically declare an email malicious.
 
 The workflow includes development error analysis and one later-period 2025
 holdout evaluation with frozen settings.

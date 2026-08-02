@@ -1,6 +1,6 @@
 # Evaluation Notes
 
-The original 2,000-row coursework dataset was replaced because repeated messages
+The initial 2,000-row dataset was replaced because repeated messages
 created complete train/test overlap. Its perfect saved scores were therefore not
 credible phishing-detection evidence.
 

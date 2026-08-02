@@ -107,6 +107,6 @@ raw messages. Approximately 95% of the rows were redundant, and every message
 in the original random test split had an exact training-set match. It also mixed
 real and artificial messages.
 
-It was useful for the first university notebook, but it could not provide
-credible evaluation evidence. Git history preserves the original file and
+It supported the initial classifier baseline, but it could not provide credible
+evaluation evidence. Git history preserves the original file and
 implementation after the replacement decision was complete.
