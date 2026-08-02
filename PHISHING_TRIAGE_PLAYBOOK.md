@@ -35,3 +35,5 @@ aid, not an automatic blocking rule.
 
 The SpaPhish file has some technical metadata, but P1A deliberately uses only
 subject and body. These checks therefore were not performed on the P1A cases.
+The final holdout's 107 false negatives show why a low score must not end review
+when other available evidence is suspicious.

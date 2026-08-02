@@ -13,6 +13,8 @@ They are sanitized summaries, not raw email publications.
 - **What the email text shows:** a workplace-policy notice, a safety reference,
   and a link to a purported policy.
 - **What the model inferred:** legitimate with a very low review score.
+- **Why it could look routine:** workplace-policy language can look like a normal
+  institutional announcement.
 - **What the analyst still needs:** sender-domain alignment, the destination,
   authentication, and whether the policy was expected.
 - **Recommended review or escalation:** verify the sender and destination before
@@ -27,6 +29,8 @@ They are sanitized summaries, not raw email publications.
 - **What the email text shows:** an account-report offer, an access claim, and
   contact information.
 - **What the model inferred:** legitimate despite account-related terms.
+- **Why it could look routine:** a formal report offer and contact details can
+  resemble ordinary business communication.
 - **What the analyst still needs:** sender/reply-to alignment, destination,
   relationship history, and the recipient's expectation.
 - **Recommended review or escalation:** verify through an official service path,
@@ -40,6 +44,8 @@ They are sanitized summaries, not raw email publications.
   wording supported legitimate classification.
 - **What the email text shows:** urgency and a request to update storage access.
 - **What the model inferred:** legitimate, but only just below the 0.5 review threshold.
+- **Why it could look routine:** a short storage-service update can resemble a
+  familiar account notification.
 - **What the analyst still needs:** sender, destination, account status, and
   whether a storage change was expected.
 - **Recommended review or escalation:** do not use message links; verify through

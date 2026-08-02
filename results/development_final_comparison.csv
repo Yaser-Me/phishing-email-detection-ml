@@ -1,0 +1,11 @@
+metric,pre_2025_validation,locked_2025_holdout
+accuracy,0.9529411764705882,0.7922330097087379
+balanced_accuracy,0.93765664160401,0.8735224586288416
+phishing_precision,0.9615384615384616,1.0
+phishing_recall,0.8928571428571429,0.7470449172576832
+phishing_f1,0.9259259259259259,0.8552097428958051
+legitimate_specificity,0.9824561403508772,1.0
+false_positives,2,0
+false_negatives,6,107
+legitimate_support,114,92
+phishing_support,56,423

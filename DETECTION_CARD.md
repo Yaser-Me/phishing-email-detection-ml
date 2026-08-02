@@ -10,6 +10,8 @@ Spanish-Language Phishing Detection Validation and Analyst Triage.
 - Input: subject and visible body only.
 - Model: word TF-IDF and Logistic Regression with `class_weight="balanced"`.
 - Comparator: Multinomial Naive Bayes in the P0 development result.
+- Never-use fields: label, date, row/file order, hash, split, campaign group,
+  technical metadata, persuasion annotations, and human-written justifications.
 
 ## Intended use
 
@@ -22,8 +24,7 @@ analyst would need.
 ## Prohibited use
 
 - Do not automatically block, delete, or label an email as malicious from this score.
-- Do not use annotation columns, dates, row order, hashes, groups, or metadata
-  as model inputs.
+- Do not use the prohibited fields above as model inputs.
 - Do not claim production, multilingual, English, Arabic, Qatar-specific, or
   independent-inbox performance.
 
@@ -42,6 +43,11 @@ balanced accuracy, 1.000 phishing precision, 0.747 phishing recall, 0.855 F1,
 0 false positives, and 107 false negatives on 92 legitimate and 423 phishing
 messages. The holdout never entered P1A fitting, prediction, or case review.
 
+Final confusion counts: 92 true negatives, 0 false positives, 316 true
+positives, and 107 false negatives. Zero final false positives does not show
+that future legitimate emails will never be flagged. The 107 false negatives
+make automatic blocking and standalone phishing prevention unsafe.
+
 ## Known limitations and privacy
 
 - Candidate campaign groups are a similarity heuristic, not campaign proof.
@@ -57,4 +63,12 @@ messages. The holdout never entered P1A fitting, prediction, or case review.
 
 This repository demonstrates reproducible email-dataset checks, leakage-aware
 development evaluation, validation error analysis, and careful analyst-triage
-reasoning. It does not demonstrate a deployable phishing blocker.
+reasoning. It does not demonstrate a deployable phishing blocker, a calibrated
+maliciousness probability, or generalization beyond this Spanish dataset.
+
+## Prohibited claims
+
+Do not claim production readiness, automatic blocking, zero false-positive
+guarantees, detection of all phishing, English/Arabic/multilingual or
+Qatar-specific performance, independent-organization generalization, SIEM/SOAR
+integration, or professional SOC experience.

@@ -13,16 +13,16 @@ P1B freezes the configuration, then evaluates the later 2025 holdout once.
 
 1. Read this README for the project decision and key dataset findings.
 2. Review [DETECTION_CARD.md](DETECTION_CARD.md).
-3. Compare `results/validation_triage_metrics.csv` and
-   `results/final_holdout_metrics.csv`.
-4. Inspect the development and final cases in
-   [VALIDATION_CASEBOOK.md](VALIDATION_CASEBOOK.md).
-   [FINAL_HOLDOUT_CASEBOOK.md](FINAL_HOLDOUT_CASEBOOK.md).
-5. Review the follow-up workflow in
+3. Review [the development-versus-final comparison](results/development_final_comparison.csv).
+4. Inspect [the final confusion matrix](results/final_holdout_confusion_matrix.csv)
+   and its [plot](results/final_holdout_confusion_matrix.png).
+5. Read [VALIDATION_CASEBOOK.md](VALIDATION_CASEBOOK.md) and the selected
+   [FINAL_HOLDOUT_CASEBOOK.md](FINAL_HOLDOUT_CASEBOOK.md) examples.
+6. Review the follow-up workflow in
    [PHISHING_TRIAGE_PLAYBOOK.md](PHISHING_TRIAGE_PLAYBOOK.md).
-6. Inspect [tests/test_project.py](tests/test_project.py) for leakage,
+7. Inspect [tests/test_project.py](tests/test_project.py) for leakage,
    holdout-isolation, and sanitization checks.
-7. Use [PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for the full
+8. Use [PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for the full
    explanation and interview practice.
 
 ## What the project demonstrates
@@ -124,8 +124,9 @@ are not directly comparable. The measured drop in phishing recall is a real
 holdout finding. Its cause is unresolved; temporal change, template differences,
 and the limited text-only input are possibilities, not confirmed explanations.
 
-See `results/final_holdout_metrics.csv`,
-`results/final_holdout_confusion_matrix.csv`, and
+See [the machine-readable comparison](results/development_final_comparison.csv),
+[final metrics](results/final_holdout_metrics.csv),
+[the final confusion matrix](results/final_holdout_confusion_matrix.csv), and
 [FINAL_HOLDOUT_CASEBOOK.md](FINAL_HOLDOUT_CASEBOOK.md). No raw emails or public
 final prediction rows are committed.
 
@@ -138,7 +139,7 @@ final prediction rows are committed.
 | `data/DATASET_SOURCE.md` | Dataset source, privacy, and historical decision |
 | `data/spaphish_v5_manifest.json` | Official filenames, hashes, and frozen rules |
 | `tests/test_project.py` | Focused checks using synthetic fixtures |
-| `results/` | Reproducible non-sensitive P0 evidence |
+| `results/` | Reproducible non-sensitive P0, P1A, and P1B evidence |
 | `DETECTION_CARD.md` | One-page purpose, limits, and allowed claims |
 | `VALIDATION_CASEBOOK.md` | Eight reviewed, sanitized validation errors |
 | `FINAL_HOLDOUT_CASEBOOK.md` | Three sanitized final false-negative examples |
@@ -146,8 +147,7 @@ final prediction rows are committed.
 | `PROJECT_OWNERSHIP_GUIDE.md` | Concise learning and interview-defense guide |
 | `AGENTS.md` | Student-level coding and project scope rules |
 | `DECISION_LOG.md` | Short record of dataset, grouping, and final-evaluation decisions |
-| `phishing_email_detection_report.pdf` | Archived university report; not current evidence |
-| `phishing_email_detection_presentation.pptx` | Archived university presentation; not current evidence |
+| `legacy/` | Archived university report and presentation; not current evidence |
 
 ## Run locally
 
@@ -196,14 +196,13 @@ after final predictions exist. The committed result was generated once.
 
 ## Portfolio wording
 
-**CV bullet:** Built a reproducible Spanish-language phishing-detection
-validation workflow: audited dataset leakage and campaign overlap, evaluated a
-simple text model on a later locked holdout, and documented false-negative
-triage limits for analyst review.
+**CV bullet:** Validated real Spanish phishing-email data by auditing duplication
+and campaign overlap, using group-aware later-period evaluation, and documenting
+false-positive and false-negative limits for analyst review.
 
-**GitHub description:** Student project for Spanish-language phishing-detection
-validation and analyst triage, with reproducible data-quality checks,
-group-aware evaluation, sanitized error analysis, and explicit limitations.
+**GitHub description:** Spanish phishing-email detection validation and
+analyst-assisted triage using real collected data, group-aware temporal
+evaluation, sanitized error analysis, and explicit limitations.
 
 Use the 30-second and 60–90-second answers in
 [PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for interview wording.

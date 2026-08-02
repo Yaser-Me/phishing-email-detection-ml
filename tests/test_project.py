@@ -41,6 +41,8 @@ from phishing_validation import (
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK = ROOT / "phishing_email_detection.ipynb"
+FINAL_CASEBOOK = ROOT / "FINAL_HOLDOUT_CASEBOOK.md"
+COMPARISON = ROOT / "results" / "development_final_comparison.csv"
 
 
 def make_test_frame(rows):
@@ -638,6 +640,38 @@ class ProjectValidationTests(unittest.TestCase):
                     results_dir=Path(temp_dir) / "results",
                     private_predictions_path=private_path,
                 )
+
+    def test_final_casebook_contains_no_raw_contact_or_url_text(self):
+        text = FINAL_CASEBOOK.read_text(encoding="utf-8")
+
+        self.assertNotRegex(text, r"https?://|www\.")
+        self.assertNotRegex(text, r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+")
+        self.assertNotRegex(text, r"[0-9a-f]{64}")
+
+    def test_comparison_artifact_matches_metric_files(self):
+        comparison = pd.read_csv(COMPARISON).set_index("metric")
+        development = pd.read_csv(
+            ROOT / "results" / "validation_triage_metrics.csv"
+        ).iloc[0]
+        final = pd.read_csv(ROOT / "results" / "final_holdout_metrics.csv").iloc[0]
+
+        for metric, source_name in [
+            ("accuracy", "accuracy"),
+            ("balanced_accuracy", "balanced_accuracy"),
+            ("phishing_precision", "precision"),
+            ("phishing_recall", "recall"),
+            ("phishing_f1", "f1"),
+            ("false_positives", "false_positive"),
+            ("false_negatives", "false_negative"),
+        ]:
+            self.assertAlmostEqual(
+                comparison.loc[metric, "pre_2025_validation"],
+                development[source_name],
+            )
+            self.assertAlmostEqual(
+                comparison.loc[metric, "locked_2025_holdout"],
+                final[source_name],
+            )
 
     def test_safe_output_schemas(self):
         audit = pd.DataFrame([{"check": "dataset.rows", "value": 2}])
