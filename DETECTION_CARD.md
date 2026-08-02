@@ -36,13 +36,18 @@ regenerates the sanitized error casebook data and confusion matrix.
 
 ## Final-holdout status
 
-The 2025 holdout is locked, unscored, and excluded from P1A loading, fitting,
-prediction, and case review.
+The frozen pipeline was trained on all permitted pre-2025 development records
+and scored the locked 2025 holdout once. It recorded 0.792 accuracy, 0.874
+balanced accuracy, 1.000 phishing precision, 0.747 phishing recall, 0.855 F1,
+0 false positives, and 107 false negatives on 92 legitimate and 423 phishing
+messages. The holdout never entered P1A fitting, prediction, or case review.
 
 ## Known limitations and privacy
 
 - Candidate campaign groups are a similarity heuristic, not campaign proof.
 - Date and missing-value patterns differ by label; they are audited but not used.
+- The later holdout's phishing recall was lower than development validation;
+  the cause is not established from this one dataset.
 - Text-only data cannot verify sender identity, domains, authentication, URLs,
   attachments, or recipient context.
 - Raw email files stay ignored. Published results contain only aggregate values

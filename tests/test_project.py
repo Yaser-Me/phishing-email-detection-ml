@@ -29,6 +29,7 @@ from phishing_validation import (
     fit_primary_validation_model,
     load_development_rows,
     run_final_evaluation,
+    run_final_evaluation_once,
     run_development_evaluation,
     run_validation_triage,
     validate_spaphish,
@@ -625,6 +626,18 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(len(predictions), 2)
         self.assertTrue(artifacts["development_hashes"].isdisjoint(artifacts["holdout_hashes"]))
         self.assertNotIn("tokenunicosoloholdout", artifacts["vectorizer"].vocabulary_)
+
+    def test_final_command_refuses_existing_prediction_file(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            private_path = Path(temp_dir) / "final_holdout_predictions.csv"
+            private_path.touch()
+
+            with self.assertRaisesRegex(ValueError, "does not permit a rerun"):
+                run_final_evaluation_once(
+                    data_path=Path(temp_dir) / "missing.csv",
+                    results_dir=Path(temp_dir) / "results",
+                    private_predictions_path=private_path,
+                )
 
     def test_safe_output_schemas(self):
         audit = pd.DataFrame([{"check": "dataset.rows", "value": 2}])

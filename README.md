@@ -7,16 +7,17 @@ review score** that can support an analyst. It does not automatically declare
 an email malicious.
 
 P1A adds a development-only validation casebook and analyst-triage workflow.
-The final 2025 holdout remains locked and has not been scored.
+P1B freezes the configuration, then evaluates the later 2025 holdout once.
 
 ## Review this project in five minutes
 
 1. Read this README for the project decision and key dataset findings.
 2. Review [DETECTION_CARD.md](DETECTION_CARD.md).
-3. Compare `results/development_metrics.csv` and
-   `results/validation_triage_metrics.csv`.
-4. Inspect the eight sanitized cases in
+3. Compare `results/validation_triage_metrics.csv` and
+   `results/final_holdout_metrics.csv`.
+4. Inspect the development and final cases in
    [VALIDATION_CASEBOOK.md](VALIDATION_CASEBOOK.md).
+   [FINAL_HOLDOUT_CASEBOOK.md](FINAL_HOLDOUT_CASEBOOK.md).
 5. Review the follow-up workflow in
    [PHISHING_TRIAGE_PLAYBOOK.md](PHISHING_TRIAGE_PLAYBOOK.md).
 6. Inspect [tests/test_project.py](tests/test_project.py) for leakage,
@@ -37,7 +38,8 @@ The final 2025 holdout remains locked and has not been scored.
    the pre-2025 development validation partition.
 7. Review all 2 false positives and 6 false negatives using sanitized case
    cards and a text-versus-analyst-evidence workflow.
-8. Preserve the 2025 holdout until a later approved final evaluation.
+8. Retrain once on permitted pre-2025 development data and evaluate the later
+   2025 holdout without changing the frozen configuration.
 
 Only the email subject and visible body text are used for prediction. Human
 annotations, labels, dates, row order, hashes, group identifiers, and technical
@@ -99,6 +101,34 @@ and 0.926 F1. Its generated evidence is `results/validation_triage.csv`,
 `results/validation_error_summary.csv`, and the development confusion matrix.
 The cases are sanitized summaries, not raw email publications.
 
+## P1B final result
+
+After the P1A correction, the frozen Logistic Regression configuration was fit
+once on all 853 permitted pre-2025 development records and evaluated on 515
+locked 2025 records. The official artifact-generating command ran once.
+
+| Metric | Pre-2025 validation | Locked 2025 holdout |
+|---|---:|---:|
+| Accuracy | 0.953 | 0.792 |
+| Balanced accuracy | 0.938 | 0.874 |
+| Phishing precision | 0.962 | 1.000 |
+| Phishing recall | 0.893 | 0.747 |
+| Phishing F1 | 0.926 | 0.855 |
+| Legitimate specificity | 0.982 | 1.000 |
+| False positives | 2 | 0 |
+| False negatives | 6 | 107 |
+
+The holdout is far more phishing-weighted (423 phishing and 92 legitimate) than
+validation (56 phishing and 114 legitimate), so raw accuracy and error counts
+are not directly comparable. The measured drop in phishing recall is a real
+holdout finding. Its cause is unresolved; temporal change, template differences,
+and the limited text-only input are possibilities, not confirmed explanations.
+
+See `results/final_holdout_metrics.csv`,
+`results/final_holdout_confusion_matrix.csv`, and
+[FINAL_HOLDOUT_CASEBOOK.md](FINAL_HOLDOUT_CASEBOOK.md). No raw emails or public
+final prediction rows are committed.
+
 ## Repository contents
 
 | File | Purpose |
@@ -110,12 +140,14 @@ The cases are sanitized summaries, not raw email publications.
 | `tests/test_project.py` | Focused checks using synthetic fixtures |
 | `results/` | Reproducible non-sensitive P0 evidence |
 | `DETECTION_CARD.md` | One-page purpose, limits, and allowed claims |
-| `VALIDATION_CASEBOOK.md` | Nine reviewed, sanitized validation errors |
+| `VALIDATION_CASEBOOK.md` | Eight reviewed, sanitized validation errors |
+| `FINAL_HOLDOUT_CASEBOOK.md` | Three sanitized final false-negative examples |
 | `PHISHING_TRIAGE_PLAYBOOK.md` | Text-only triage workflow and missing-evidence checks |
 | `PROJECT_OWNERSHIP_GUIDE.md` | Concise learning and interview-defense guide |
 | `AGENTS.md` | Student-level coding and project scope rules |
-| `phishing_email_detection_report.pdf` | Historical university report; not current P0 evidence |
-| `phishing_email_detection_presentation.pptx` | Historical university presentation; not current P0 evidence |
+| `DECISION_LOG.md` | Short record of dataset, grouping, and final-evaluation decisions |
+| `phishing_email_detection_report.pdf` | Archived university report; not current evidence |
+| `phishing_email_detection_presentation.pptx` | Archived university presentation; not current evidence |
 
 ## Run locally
 
@@ -160,7 +192,21 @@ python phishing_validation.py --score-final-holdout
 
 It fits the frozen Logistic Regression pipeline once on all permitted pre-2025
 development records, then scores the locked 2025 partition. It refuses a rerun
-after final predictions exist.
+after final predictions exist. The committed result was generated once.
+
+## Portfolio wording
+
+**CV bullet:** Built a reproducible Spanish-language phishing-detection
+validation workflow: audited dataset leakage and campaign overlap, evaluated a
+simple text model on a later locked holdout, and documented false-negative
+triage limits for analyst review.
+
+**GitHub description:** Student project for Spanish-language phishing-detection
+validation and analyst triage, with reproducible data-quality checks,
+group-aware evaluation, sanitized error analysis, and explicit limitations.
+
+Use the 30-second and 60–90-second answers in
+[PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for interview wording.
 
 ## Honest claims and limitations
 
