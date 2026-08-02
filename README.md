@@ -6,8 +6,23 @@ related messages in one partition, and treats the model output as a **model
 review score** that can support an analyst. It does not automatically declare
 an email malicious.
 
-P0 is a development-stage credibility check. The final 2025 holdout remains
-locked and has not been scored.
+P1A adds a development-only validation casebook and analyst-triage workflow.
+The final 2025 holdout remains locked and has not been scored.
+
+## Review this project in five minutes
+
+1. Read this README for the project decision and key dataset findings.
+2. Review [DETECTION_CARD.md](DETECTION_CARD.md).
+3. Compare `results/development_metrics.csv` and
+   `results/validation_triage_metrics.csv`.
+4. Inspect the nine sanitized cases in
+   [VALIDATION_CASEBOOK.md](VALIDATION_CASEBOOK.md).
+5. Review the follow-up workflow in
+   [PHISHING_TRIAGE_PLAYBOOK.md](PHISHING_TRIAGE_PLAYBOOK.md).
+6. Inspect [tests/test_project.py](tests/test_project.py) for leakage,
+   holdout-isolation, and sanitization checks.
+7. Use [PROJECT_OWNERSHIP_GUIDE.md](PROJECT_OWNERSHIP_GUIDE.md) for the full
+   explanation and interview practice.
 
 ## What the project demonstrates
 
@@ -20,8 +35,9 @@ locked and has not been scored.
 5. Fit text preprocessing only on the training partition.
 6. Compare a simple Logistic Regression model with Multinomial Naive Bayes on
    the pre-2025 development validation partition.
-7. Preserve the 2025 holdout until the workflow and analyst review method are
-   fixed.
+7. Review all 2 false positives and 7 false negatives using sanitized case
+   cards and a text-versus-analyst-evidence workflow.
+8. Preserve the 2025 holdout until a later approved final evaluation.
 
 Only the email subject and visible body text are used for prediction. Human
 annotations, labels, dates, row order, hashes, group identifiers, and technical
@@ -77,6 +93,12 @@ are development results, not final or production results.
 The generated evidence is in `results/dataset_audit.csv`,
 `results/split_manifest.csv`, and `results/development_metrics.csv`.
 
+P1A repeats the Logistic Regression validation result without using the holdout:
+2 false positives, 7 false negatives, 0.944 accuracy, 0.917 balanced accuracy,
+and 0.899 F1. Its generated evidence is `results/validation_triage.csv`,
+`results/validation_error_summary.csv`, and the development confusion matrix.
+The cases are sanitized summaries, not raw email publications.
+
 ## Repository contents
 
 | File | Purpose |
@@ -87,6 +109,10 @@ The generated evidence is in `results/dataset_audit.csv`,
 | `data/spaphish_v5_manifest.json` | Official filenames, hashes, and frozen rules |
 | `tests/test_project.py` | Focused checks using synthetic fixtures |
 | `results/` | Reproducible non-sensitive P0 evidence |
+| `DETECTION_CARD.md` | One-page purpose, limits, and allowed claims |
+| `VALIDATION_CASEBOOK.md` | Nine reviewed, sanitized validation errors |
+| `PHISHING_TRIAGE_PLAYBOOK.md` | Text-only triage workflow and missing-evidence checks |
+| `PROJECT_OWNERSHIP_GUIDE.md` | Concise learning and interview-defense guide |
 | `AGENTS.md` | Student-level coding and project scope rules |
 | `phishing_email_detection_report.pdf` | Historical university report; not current P0 evidence |
 | `phishing_email_detection_presentation.pptx` | Historical university presentation; not current P0 evidence |
@@ -113,9 +139,19 @@ python -m unittest discover -s tests -v
 jupyter nbconvert --execute --to notebook --inplace phishing_email_detection.ipynb
 ```
 
-The script refuses `--score-final-holdout` during P0. Scoring the final holdout
-requires a later reviewed phase that first freezes model settings, threshold
-handling, and the analyst case-analysis method.
+Run the P1A development-only triage workflow:
+
+```powershell
+python phishing_validation.py --validation-triage
+```
+
+It regenerates primary validation metrics, the nine reviewed sanitized case
+records, an aggregate error summary, and a development confusion matrix. It
+does not put 2025 holdout records into fitting, prediction, or triage.
+
+The script refuses `--score-final-holdout` during P1A. Scoring the final holdout
+requires later P1B approval after model settings, threshold handling, and
+analyst case analysis are frozen.
 
 ## Honest claims and limitations
 

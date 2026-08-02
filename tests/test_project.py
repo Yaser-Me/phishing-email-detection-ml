@@ -15,6 +15,7 @@ from phishing_validation import (
     FINAL_HOLDOUT_LOCKED,
     PREDICTION_COLUMNS,
     SAFE_METRIC_COLUMNS,
+    SAFE_TRIAGE_COLUMNS,
     SAFE_SPLIT_COLUMNS,
     assign_temporal_splits,
     build_campaign_groups,
@@ -23,7 +24,11 @@ from phishing_validation import (
     load_manifest,
     load_spaphish,
     normalized_duplicate_key,
+    build_sanitized_validation_triage,
+    fit_primary_validation_model,
+    load_development_rows,
     run_development_evaluation,
+    run_validation_triage,
     validate_spaphish,
     vectorize_train_validation,
     verify_external_files,
@@ -380,6 +385,106 @@ class ProjectValidationTests(unittest.TestCase):
             artifacts["vectorizer"].vocabulary_,
         )
 
+    def test_p1a_loader_returns_only_development_rows(self):
+        split = pd.DataFrame(
+            [
+                {
+                    "hash": "train_hash",
+                    "campaign_group": "train_group",
+                    "Label": 0,
+                    "date_year": 2024,
+                    "split": "train",
+                },
+                {
+                    "hash": "validation_hash",
+                    "campaign_group": "validation_group",
+                    "Label": 1,
+                    "date_year": 2024,
+                    "split": "validation",
+                },
+                {
+                    "hash": "holdout_hash",
+                    "campaign_group": "holdout_group",
+                    "Label": 1,
+                    "date_year": 2025,
+                    "split": "locked_2025_holdout",
+                },
+            ]
+        )
+        raw = pd.DataFrame(
+            [
+                {
+                    "hash": "train_hash",
+                    "subject": "Mensaje de entrenamiento",
+                    "body": "Contenido de entrenamiento",
+                    "Label": 0,
+                },
+                {
+                    "hash": "validation_hash",
+                    "subject": "Mensaje de validación",
+                    "body": "Contenido de validación",
+                    "Label": 1,
+                },
+                {
+                    "hash": "holdout_hash",
+                    "subject": "holdout secret",
+                    "body": "This text must not enter P1A.",
+                    "Label": 1,
+                },
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            split_path = temp_path / "split_manifest.csv"
+            data_path = temp_path / "emails.csv"
+            split.to_csv(split_path, index=False)
+            raw.to_csv(data_path, index=False)
+            development_rows = load_development_rows(data_path, split_path)
+
+        self.assertEqual(set(development_rows["split"]), {"train", "validation"})
+        self.assertNotIn("holdout_hash", set(development_rows["hash"]))
+        self.assertNotIn("holdout secret", " ".join(development_rows["subject"]))
+
+    def test_p1a_primary_model_refuses_non_development_split(self):
+        rows = make_test_frame(
+            [
+                {
+                    "subject": "Texto bloqueado",
+                    "body": "No debe entrar al modelo.",
+                    "date": "01/01/2025",
+                    "Label": 1,
+                }
+            ]
+        )[["hash", "subject", "body", "Label"]]
+        rows["split"] = "locked_2025_holdout"
+
+        with self.assertRaises(ValueError):
+            fit_primary_validation_model(rows)
+
+    def test_sanitized_triage_has_no_raw_message_columns(self):
+        validation_cases = pd.DataFrame(
+            [
+                {
+                    "hash": f"{index:064x}",
+                    "Label": 0 if index < 2 else 1,
+                    "predicted_label": 1 if index < 2 else 0,
+                    "model_review_score": index / 10,
+                }
+                for index in range(9)
+            ]
+        )
+
+        triage = build_sanitized_validation_triage(validation_cases)
+
+        self.assertEqual(list(triage.columns), SAFE_TRIAGE_COLUMNS)
+        self.assertEqual(len(triage), 9)
+        self.assertTrue(
+            {"hash", "subject", "body", "urls"}.isdisjoint(triage.columns)
+        )
+        text = triage.astype(str).to_csv(index=False)
+        self.assertNotRegex(text, r"https?://|www\.|[A-Za-z0-9._%+-]+@")
+
     def test_prediction_columns_exclude_metadata_and_annotations(self):
         self.assertEqual(PREDICTION_COLUMNS, ["subject", "body"])
         forbidden = {
@@ -455,6 +560,24 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(int(df["subject"].isna().sum()), 3)
         self.assertEqual(int(df["body"].isna().sum()), 0)
         self.assertEqual(int(df["date"].isna().sum()), 24)
+
+    @unittest.skipUnless(DEFAULT_DATASET.exists(), "SpaPhish external data not available")
+    def test_p1a_triage_is_development_only_and_sanitized(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            _, metrics, triage, summary, confusion, artifacts = run_validation_triage(
+                results_dir=temp_dir
+            )
+
+        holdout_hashes = set(
+            pd.read_csv(ROOT / "results" / "split_manifest.csv")
+            .query("split == 'locked_2025_holdout'")["hash"]
+        )
+        self.assertEqual(len(triage), 9)
+        self.assertEqual(int(summary["error_count"].sum()), 9)
+        self.assertEqual(int(confusion["count"].sum()), 161)
+        self.assertTrue(artifacts["train_hashes"].isdisjoint(holdout_hashes))
+        self.assertTrue(artifacts["validation_hashes"].isdisjoint(holdout_hashes))
+        self.assertEqual(metrics.loc[0, "false_negative"], 7)
 
     def test_manifest_contains_no_invalid_hashes(self):
         text = DEFAULT_MANIFEST.read_text(encoding="utf-8")

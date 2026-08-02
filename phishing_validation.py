@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_DATASET = ROOT / "data" / "external" / "spaphish" / "Spaphish dataset - DiB.csv"
 DEFAULT_MANIFEST = ROOT / "data" / "spaphish_v5_manifest.json"
 DEFAULT_RESULTS = ROOT / "results"
+DEFAULT_SPLIT_MANIFEST = DEFAULT_RESULTS / "split_manifest.csv"
 
 RANDOM_SEED = 42
 HOLDOUT_YEAR = 2025
@@ -106,6 +107,115 @@ SAFE_METRIC_COLUMNS = [
     "legitimate_support",
     "phishing_support",
 ]
+SAFE_TRIAGE_COLUMNS = [
+    "case_id",
+    "actual_label",
+    "predicted_label",
+    "model_review_score",
+    "sanitized_excerpt",
+    "selected_influential_terms",
+    "visible_text_evidence",
+    "likely_model_mistake",
+    "evidence_not_available",
+    "recommended_review",
+    "limitation",
+]
+SAFE_ERROR_SUMMARY_COLUMNS = [
+    "actual_label",
+    "predicted_label",
+    "error_count",
+]
+SAFE_CONFUSION_COLUMNS = [
+    "actual_label",
+    "predicted_label",
+    "count",
+]
+
+# These notes were manually reviewed from the nine pre-2025 validation errors.
+# They intentionally use no raw text, names, organizations, addresses, or URLs.
+TRIAGE_CASE_NOTES = {
+    "VAL-FP-01": {
+        "sanitized_excerpt": "[Redacted account-security code message with a self-service link.]",
+        "selected_influential_terms": "cuenta; seguridad; clic",
+        "visible_text_evidence": "Account-security wording, a code, and a self-service link are visible.",
+        "likely_model_mistake": "Security and click language overlaps with phishing patterns.",
+        "evidence_not_available": "Sender identity, link destination, authentication results, and user context.",
+        "recommended_review": "Check sender-domain alignment and whether the account event was expected before escalation.",
+        "limitation": "Text alone cannot verify sender ownership or the final link destination.",
+    },
+    "VAL-FP-02": {
+        "sanitized_excerpt": "[Redacted payment-receipt message with transaction and total details.]",
+        "selected_influential_terms": "pago; cuenta; transacción; tarjeta",
+        "visible_text_evidence": "Payment, transaction, account, and card wording are visible.",
+        "likely_model_mistake": "Payment language can appear in both legitimate receipts and phishing lures.",
+        "evidence_not_available": "Sender identity, payment history, link destination, and recipient expectation.",
+        "recommended_review": "Verify the sender through a trusted channel and compare with an expected receipt.",
+        "limitation": "The text does not confirm whether a real payment occurred.",
+    },
+    "VAL-FN-01": {
+        "sanitized_excerpt": "[Redacted threatening message claiming account monitoring and personal harm.]",
+        "selected_influential_terms": "cuenta; hemos; seguridad",
+        "visible_text_evidence": "Threatening language, a claimed compromise, and pressure on the recipient are visible.",
+        "likely_model_mistake": "A long narrative with common words received a low review score.",
+        "evidence_not_available": "Sender, headers, payment request details, and related campaign reports.",
+        "recommended_review": "Escalate for threat and extortion review; preserve the message and check account exposure safely.",
+        "limitation": "The visible text cannot prove a compromise actually occurred.",
+    },
+    "VAL-FN-02": {
+        "sanitized_excerpt": "[Redacted promotional trial message with a price and several links.]",
+        "selected_influential_terms": "requerida; day; here",
+        "visible_text_evidence": "A low-cost trial offer, links, and persuasive marketing language are visible.",
+        "likely_model_mistake": "The message resembles a normal newsletter or marketing message.",
+        "evidence_not_available": "Sender reputation, destination domains, subscription history, and user expectation.",
+        "recommended_review": "Review destinations and sender reputation before deciding whether it is an unwanted promotion or phishing.",
+        "limitation": "Text alone cannot establish whether the offer is legitimate.",
+    },
+    "VAL-FN-03": {
+        "sanitized_excerpt": "[Redacted urgent quotation request that refers to an attachment.]",
+        "selected_influential_terms": "solicitud; adjunto; cuenta",
+        "visible_text_evidence": "An urgent business request, a quotation request, and an attachment reference are visible.",
+        "likely_model_mistake": "Generic business wording can look legitimate to a text-only model.",
+        "evidence_not_available": "Sender domain, attachment type and hash, recipient relationship, and procurement context.",
+        "recommended_review": "Quarantine the attachment and verify the request through a known procurement contact.",
+        "limitation": "The text does not reveal the attachment content or sender legitimacy.",
+    },
+    "VAL-FN-04": {
+        "sanitized_excerpt": "[Redacted short invoice notice with an attachment and a password.]",
+        "selected_influential_terms": "factura; archivo adjunto; archivo",
+        "visible_text_evidence": "An invoice reference, attachment reference, and password are visible.",
+        "likely_model_mistake": "The short message has too little context for the model to separate it reliably.",
+        "evidence_not_available": "Attachment file details, sender identity, invoice history, and recipient expectation.",
+        "recommended_review": "Treat the attachment as suspicious until the sender and invoice are independently verified.",
+        "limitation": "The visible text cannot show whether the attachment is harmful.",
+    },
+    "VAL-FN-05": {
+        "sanitized_excerpt": "[Redacted prize notice that requests personal details by email.]",
+        "selected_influential_terms": "ganador; envíe; cuenta",
+        "visible_text_evidence": "A prize claim and a request for personal details are visible.",
+        "likely_model_mistake": "Mixed warning and prize language reduced the model review score.",
+        "evidence_not_available": "Sender identity, reply-to address, message routing, and whether a contest was entered.",
+        "recommended_review": "Escalate for credential or personal-data collection review and verify through an official channel.",
+        "limitation": "The text does not prove who sent the message.",
+    },
+    "VAL-FN-06": {
+        "sanitized_excerpt": "[Redacted card-activation notice that warns service will stop.]",
+        "selected_influential_terms": "tarjeta; cliente; seguridad",
+        "visible_text_evidence": "A card-service warning, activation request, and urgency are visible.",
+        "likely_model_mistake": "Familiar service language can resemble a legitimate account notice.",
+        "evidence_not_available": "Sender-domain alignment, linked destination, account status, and authentication results.",
+        "recommended_review": "Do not use message links; verify the account through the official service channel.",
+        "limitation": "The text cannot verify an actual account or service change.",
+    },
+    "VAL-FN-07": {
+        "sanitized_excerpt": "[Redacted coupon and password-reset notice with account-safety wording.]",
+        "selected_influential_terms": "clic; seguridad; cuenta",
+        "visible_text_evidence": "A coupon offer, password-reset prompt, and account-safety wording are visible.",
+        "likely_model_mistake": "Brand-like account language overlaps with familiar legitimate service messages.",
+        "evidence_not_available": "Sender identity, destination domain, subscription history, and authentication results.",
+        "recommended_review": "Review sender and destination independently; do not reset credentials through the message.",
+        "limitation": "The visible text cannot confirm the message is from the claimed service.",
+    },
+}
 
 HTML_TAG_PATTERN = re.compile(r"<[^>\n]+>")
 HTML_TAG_NAME_PATTERN = re.compile(r"<\s*/?\s*[A-Za-z][A-Za-z0-9]*\b")
@@ -187,6 +297,51 @@ def load_spaphish(data_path=DEFAULT_DATASET):
     """Load SpaPhish v5 and enforce the fixed schema and target rules."""
     df = pd.read_csv(data_path, encoding="utf-8-sig", sep=",")
     return validate_spaphish(df)
+
+
+def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
+    """Load only the frozen training and validation records needed for P1A."""
+    split_frame = pd.read_csv(split_path)
+    if list(split_frame.columns) != SAFE_SPLIT_COLUMNS:
+        raise ValueError("The split manifest has an unexpected schema.")
+
+    development_split = split_frame[
+        split_frame["split"].isin(["train", "validation"])
+    ].copy()
+    if development_split.empty:
+        raise ValueError("The split manifest does not contain development records.")
+    if development_split["hash"].duplicated().any():
+        raise ValueError("The split manifest contains duplicate record hashes.")
+
+    allowed_hashes = set(development_split["hash"])
+    copied_rows = []
+    for chunk in pd.read_csv(
+        data_path,
+        encoding="utf-8-sig",
+        usecols=["hash", "subject", "body", "Label"],
+        chunksize=200,
+    ):
+        development_chunk = chunk[chunk["hash"].isin(allowed_hashes)].copy()
+        if not development_chunk.empty:
+            copied_rows.append(development_chunk)
+
+    development_rows = pd.concat(copied_rows, ignore_index=True)
+    development_rows = development_rows.merge(
+        development_split[["hash", "split", "Label"]],
+        on="hash",
+        suffixes=("", "_manifest"),
+        validate="one_to_one",
+    )
+    if not development_rows["Label"].eq(development_rows["Label_manifest"]).all():
+        raise ValueError("The CSV labels do not match the frozen split manifest.")
+    development_rows = development_rows.drop(columns="Label_manifest")
+
+    if set(development_rows["hash"]) != allowed_hashes:
+        raise ValueError("The external CSV does not match the frozen development hashes.")
+    if not development_rows["split"].isin(["train", "validation"]).all():
+        raise ValueError("P1A attempted to load a non-development partition.")
+
+    return development_rows
 
 
 def clean_visible_text(subject, body):
@@ -425,6 +580,163 @@ def vectorize_train_validation(train_text, validation_text):
     return vectorizer, train_features, validation_features
 
 
+def fit_primary_validation_model(development_rows):
+    """Fit the P1A Logistic Regression model on training rows only."""
+    required_columns = {"hash", "subject", "body", "Label", "split"}
+    if not required_columns.issubset(development_rows.columns):
+        raise ValueError("P1A development rows are missing required columns.")
+    if not development_rows["split"].isin(["train", "validation"]).all():
+        raise ValueError("The final holdout cannot enter P1A model fitting.")
+
+    train_mask = development_rows["split"].eq("train")
+    validation_mask = development_rows["split"].eq("validation")
+    visible_text = combine_visible_text(development_rows)
+    vectorizer, train_features, validation_features = vectorize_train_validation(
+        visible_text.loc[train_mask],
+        visible_text.loc[validation_mask],
+    )
+    model = LogisticRegression(
+        class_weight="balanced",
+        max_iter=1000,
+        random_state=RANDOM_SEED,
+    )
+    model.fit(train_features, development_rows.loc[train_mask, "Label"])
+    predictions = model.predict(validation_features)
+    review_scores = model.predict_proba(validation_features)[:, 1]
+    validation_labels = development_rows.loc[validation_mask, "Label"]
+    metrics = pd.DataFrame(
+        [
+            _model_metrics(
+                "Logistic Regression",
+                validation_labels,
+                predictions,
+                review_scores,
+            )
+        ],
+        columns=SAFE_METRIC_COLUMNS,
+    )
+    validation_cases = development_rows.loc[
+        validation_mask,
+        ["hash", "Label"],
+    ].copy()
+    validation_cases["validation_position"] = range(len(validation_cases))
+    validation_cases["predicted_label"] = predictions
+    validation_cases["model_review_score"] = review_scores
+
+    return metrics, {
+        "model": model,
+        "vectorizer": vectorizer,
+        "validation_cases": validation_cases,
+        "validation_features": validation_features,
+        "train_hashes": set(development_rows.loc[train_mask, "hash"]),
+        "validation_hashes": set(development_rows.loc[validation_mask, "hash"]),
+    }
+
+
+def build_sanitized_validation_triage(
+    validation_cases,
+    vectorizer=None,
+    model=None,
+    validation_features=None,
+):
+    """Turn reviewed validation errors into safe case cards without raw text."""
+    errors = validation_cases[
+        validation_cases["Label"].ne(validation_cases["predicted_label"])
+    ].copy()
+    errors = errors.sort_values(["Label", "model_review_score", "hash"])
+    errors["error_kind"] = np.where(errors["Label"].eq(0), "FP", "FN")
+    errors["case_number"] = errors.groupby("error_kind").cumcount() + 1
+    errors["case_id"] = errors.apply(
+        lambda row: f"VAL-{row['error_kind']}-{int(row['case_number']):02d}",
+        axis=1,
+    )
+
+    expected_case_ids = set(TRIAGE_CASE_NOTES)
+    if set(errors["case_id"]) != expected_case_ids:
+        raise ValueError(
+            "Validation errors do not match the manually reviewed P1A case set. "
+            "Review the result before publishing new case notes."
+        )
+
+    rows = []
+    for _, error in errors.iterrows():
+        note = TRIAGE_CASE_NOTES[error["case_id"]]
+        if vectorizer is not None and model is not None and validation_features is not None:
+            feature_row = validation_features.getrow(error["validation_position"])
+            feature_names = vectorizer.get_feature_names_out()
+            contributions = feature_row.data * model.coef_[0][feature_row.indices]
+            available_terms = set(feature_names[feature_row.indices[contributions != 0]])
+            selected_terms = {
+                value.strip() for value in note["selected_influential_terms"].split(";")
+            }
+            if not selected_terms.issubset(available_terms):
+                raise ValueError(
+                    "A reviewed influential term is not present in its validation row."
+                )
+        rows.append(
+            {
+                "case_id": error["case_id"],
+                "actual_label": "legitimate" if error["Label"] == 0 else "phishing",
+                "predicted_label": (
+                    "legitimate" if error["predicted_label"] == 0 else "phishing"
+                ),
+                "model_review_score": float(error["model_review_score"]),
+                **note,
+            }
+        )
+
+    triage = pd.DataFrame(rows, columns=SAFE_TRIAGE_COLUMNS)
+    for column in SAFE_TRIAGE_COLUMNS[4:]:
+        if triage[column].astype(str).str.contains(URL_PATTERN).any():
+            raise ValueError("Unsafe URL text was found in the sanitized triage output.")
+        if triage[column].astype(str).str.contains(EMAIL_PATTERN).any():
+            raise ValueError("Unsafe email text was found in the sanitized triage output.")
+
+    return triage
+
+
+def build_error_summary(validation_cases):
+    """Create a small aggregate summary of validation mistakes."""
+    errors = validation_cases[
+        validation_cases["Label"].ne(validation_cases["predicted_label"])
+    ].copy()
+    errors["actual_label"] = np.where(
+        errors["Label"].eq(0), "legitimate", "phishing"
+    )
+    errors["predicted_label"] = np.where(
+        errors["predicted_label"].eq(0), "legitimate", "phishing"
+    )
+    return (
+        errors.groupby(["actual_label", "predicted_label"])
+        .size()
+        .reset_index(name="error_count")
+        .reindex(columns=SAFE_ERROR_SUMMARY_COLUMNS)
+    )
+
+
+def build_confusion_table(validation_cases):
+    """Create a safe, aggregate confusion matrix for the primary model."""
+    table = pd.crosstab(
+        validation_cases["Label"],
+        validation_cases["predicted_label"],
+    ).reindex(index=[0, 1], columns=[0, 1], fill_value=0)
+    rows = []
+    for actual_label in [0, 1]:
+        for predicted_label in [0, 1]:
+            rows.append(
+                {
+                    "actual_label": (
+                        "legitimate" if actual_label == 0 else "phishing"
+                    ),
+                    "predicted_label": (
+                        "legitimate" if predicted_label == 0 else "phishing"
+                    ),
+                    "count": int(table.loc[actual_label, predicted_label]),
+                }
+            )
+    return pd.DataFrame(rows, columns=SAFE_CONFUSION_COLUMNS)
+
+
 def _model_metrics(model_name, actual, predicted, review_scores):
     """Return one safe aggregate metrics row."""
     matrix = confusion_matrix(actual, predicted, labels=[0, 1])
@@ -620,6 +932,84 @@ def write_p0_results(audit, split_frame, metrics, results_dir=DEFAULT_RESULTS):
     metrics.to_csv(results_path / "development_metrics.csv", index=False)
 
 
+def write_validation_triage_results(
+    metrics,
+    triage,
+    error_summary,
+    confusion_table,
+    results_dir=DEFAULT_RESULTS,
+):
+    """Write P1A aggregate and sanitized validation evidence only."""
+    results_path = Path(results_dir)
+    results_path.mkdir(parents=True, exist_ok=True)
+    if list(metrics.columns) != SAFE_METRIC_COLUMNS:
+        raise ValueError("Unsafe validation metric columns were requested.")
+    if list(triage.columns) != SAFE_TRIAGE_COLUMNS:
+        raise ValueError("Unsafe validation triage columns were requested.")
+    if list(error_summary.columns) != SAFE_ERROR_SUMMARY_COLUMNS:
+        raise ValueError("Unsafe validation error-summary columns were requested.")
+    if list(confusion_table.columns) != SAFE_CONFUSION_COLUMNS:
+        raise ValueError("Unsafe confusion-matrix columns were requested.")
+
+    metrics.to_csv(results_path / "validation_triage_metrics.csv", index=False)
+    triage.to_csv(results_path / "validation_triage.csv", index=False)
+    error_summary.to_csv(results_path / "validation_error_summary.csv", index=False)
+    confusion_table.to_csv(results_path / "development_confusion_matrix.csv", index=False)
+
+    matrix = confusion_table.pivot(
+        index="actual_label",
+        columns="predicted_label",
+        values="count",
+    ).reindex(index=["legitimate", "phishing"], columns=["legitimate", "phishing"])
+    import matplotlib.pyplot as plt
+
+    figure, axis = plt.subplots(figsize=(5, 4))
+    image = axis.imshow(matrix, cmap="Blues")
+    figure.colorbar(image, ax=axis, label="Email records")
+    axis.set_title("Pre-2025 validation confusion matrix")
+    axis.set_xlabel("Predicted label")
+    axis.set_ylabel("Actual label")
+    axis.set_xticks([0, 1], ["Legitimate", "Phishing"])
+    axis.set_yticks([0, 1], ["Legitimate", "Phishing"])
+    for row in range(2):
+        for column in range(2):
+            axis.text(column, row, int(matrix.iloc[row, column]), ha="center", va="center")
+    figure.tight_layout()
+    figure.savefig(results_path / "development_confusion_matrix.png", dpi=150)
+    plt.close(figure)
+
+
+def run_validation_triage(
+    data_path=DEFAULT_DATASET,
+    manifest_path=DEFAULT_MANIFEST,
+    split_path=DEFAULT_SPLIT_MANIFEST,
+    results_dir=DEFAULT_RESULTS,
+):
+    """Run P1A validation triage without loading records into a holdout model path."""
+    if not FINAL_HOLDOUT_LOCKED:
+        raise ValueError("P1A requires the final holdout to remain locked.")
+
+    file_checks = verify_external_files(Path(data_path).parent, manifest_path)
+    development_rows = load_development_rows(data_path, split_path)
+    metrics, artifacts = fit_primary_validation_model(development_rows)
+    triage = build_sanitized_validation_triage(
+        artifacts["validation_cases"],
+        artifacts["vectorizer"],
+        artifacts["model"],
+        artifacts["validation_features"],
+    )
+    error_summary = build_error_summary(artifacts["validation_cases"])
+    confusion_table = build_confusion_table(artifacts["validation_cases"])
+    write_validation_triage_results(
+        metrics,
+        triage,
+        error_summary,
+        confusion_table,
+        results_dir,
+    )
+    return file_checks, metrics, triage, error_summary, confusion_table, artifacts
+
+
 def run_p0(data_path=DEFAULT_DATASET, manifest_path=DEFAULT_MANIFEST, results_dir=DEFAULT_RESULTS):
     """Run the complete P0 audit and development evaluation."""
     external_dir = Path(data_path).parent
@@ -645,12 +1035,36 @@ def main():
         action="store_true",
         help="Reserved for P1. P0 refuses this action.",
     )
+    parser.add_argument(
+        "--validation-triage",
+        action="store_true",
+        help="Run P1A validation triage without scoring the 2025 holdout.",
+    )
     args = parser.parse_args()
 
     if args.score_final_holdout and FINAL_HOLDOUT_LOCKED:
         raise SystemExit(
-            "The 2025 holdout is locked during P0. P1 approval is required."
+            "The 2025 holdout is locked during P1A. P1B approval is required."
         )
+
+    if args.validation_triage:
+        file_checks, metrics, triage, error_summary, _, _ = run_validation_triage(
+            args.data,
+            args.manifest,
+            DEFAULT_SPLIT_MANIFEST,
+            args.results_dir,
+        )
+        print("===========================")
+        print("SpaPhish P1A Validation Triage")
+        print("===========================")
+        print("Verified files:", int(file_checks["matches"].sum()))
+        print("Sanitized validation cases:", len(triage))
+        print("\nPrimary validation metrics:")
+        print(metrics.round(4).to_string(index=False))
+        print("\nValidation error summary:")
+        print(error_summary.to_string(index=False))
+        print("\nThe 2025 holdout was not scored or included in triage.")
+        return
 
     file_checks, audit, split_frame, metrics, _ = run_p0(
         args.data,

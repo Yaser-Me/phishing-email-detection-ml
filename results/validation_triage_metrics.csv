@@ -1,0 +1,2 @@
+model,partition,accuracy,balanced_accuracy,precision,recall,f1,roc_auc,true_negative,false_positive,false_negative,true_positive,legitimate_support,phishing_support
+Logistic Regression,pre_2025_validation,0.9440993788819876,0.9167599850690555,0.9523809523809523,0.851063829787234,0.898876404494382,0.990481522956327,112,2,7,40,114,47

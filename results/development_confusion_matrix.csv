@@ -1,0 +1,5 @@
+actual_label,predicted_label,count
+legitimate,legitimate,112
+legitimate,phishing,2
+phishing,legitimate,7
+phishing,phishing,40
