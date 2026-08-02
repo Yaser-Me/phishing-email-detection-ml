@@ -75,6 +75,7 @@ class ProjectValidationTests(unittest.TestCase):
             notebook = json.load(handle)
 
         compiled = 0
+        execution_counts = []
         for index, cell in enumerate(notebook.get("cells", []), start=1):
             if cell.get("cell_type") != "code":
                 continue
@@ -82,9 +83,17 @@ class ProjectValidationTests(unittest.TestCase):
             source = "".join(cell.get("source", []))
             if source.strip():
                 compile(source, f"{NOTEBOOK.name}:cell-{index}", "exec")
+                self.assertFalse(
+                    any(
+                        output.get("output_type") == "error"
+                        for output in cell.get("outputs", [])
+                    )
+                )
+                execution_counts.append(cell.get("execution_count"))
                 compiled += 1
 
         self.assertGreater(compiled, 0)
+        self.assertEqual(execution_counts, list(range(1, compiled + 1)))
 
     def test_manifest_values_and_hash_format(self):
         manifest = load_manifest(DEFAULT_MANIFEST)
@@ -661,17 +670,85 @@ class ProjectValidationTests(unittest.TestCase):
             ("phishing_precision", "precision"),
             ("phishing_recall", "recall"),
             ("phishing_f1", "f1"),
+            ("legitimate_specificity", None),
             ("false_positives", "false_positive"),
             ("false_negatives", "false_negative"),
+            ("legitimate_support", "legitimate_support"),
+            ("phishing_support", "phishing_support"),
         ]:
+            if metric == "legitimate_specificity":
+                development_value = development["true_negative"] / (
+                    development["true_negative"] + development["false_positive"]
+                )
+                final_value = final["true_negative"] / (
+                    final["true_negative"] + final["false_positive"]
+                )
+            else:
+                development_value = development[source_name]
+                final_value = final[source_name]
             self.assertAlmostEqual(
                 comparison.loc[metric, "pre_2025_validation"],
-                development[source_name],
+                development_value,
             )
             self.assertAlmostEqual(
                 comparison.loc[metric, "locked_2025_holdout"],
-                final[source_name],
+                final_value,
             )
+
+        for metrics_name, confusion_name, error_name in [
+            (
+                "validation_triage_metrics.csv",
+                "development_confusion_matrix.csv",
+                "validation_error_summary.csv",
+            ),
+            (
+                "final_holdout_metrics.csv",
+                "final_holdout_confusion_matrix.csv",
+                "final_holdout_error_summary.csv",
+            ),
+        ]:
+            metrics = pd.read_csv(ROOT / "results" / metrics_name).iloc[0]
+            confusion = pd.read_csv(ROOT / "results" / confusion_name).set_index(
+                ["actual_label", "predicted_label"]
+            )["count"]
+            errors = pd.read_csv(ROOT / "results" / error_name).set_index(
+                ["actual_label", "predicted_label"]
+            )["error_count"]
+
+            true_negative = int(confusion.loc[("legitimate", "legitimate")])
+            false_positive = int(confusion.loc[("legitimate", "phishing")])
+            false_negative = int(confusion.loc[("phishing", "legitimate")])
+            true_positive = int(confusion.loc[("phishing", "phishing")])
+            total = true_negative + false_positive + false_negative + true_positive
+            specificity = true_negative / (true_negative + false_positive)
+            recall = true_positive / (true_positive + false_negative)
+            precision = true_positive / (true_positive + false_positive)
+            f1 = 2 * precision * recall / (precision + recall)
+
+            self.assertEqual(int(metrics["true_negative"]), true_negative)
+            self.assertEqual(int(metrics["false_positive"]), false_positive)
+            self.assertEqual(int(metrics["false_negative"]), false_negative)
+            self.assertEqual(int(metrics["true_positive"]), true_positive)
+            self.assertEqual(
+                int(metrics["legitimate_support"]), true_negative + false_positive
+            )
+            self.assertEqual(
+                int(metrics["phishing_support"]), false_negative + true_positive
+            )
+            self.assertAlmostEqual(metrics["accuracy"], (true_negative + true_positive) / total)
+            self.assertAlmostEqual(metrics["balanced_accuracy"], (specificity + recall) / 2)
+            self.assertAlmostEqual(metrics["precision"], precision)
+            self.assertAlmostEqual(metrics["recall"], recall)
+            self.assertAlmostEqual(metrics["f1"], f1)
+
+            expected_errors = {
+                ("legitimate", "phishing"): false_positive,
+                ("phishing", "legitimate"): false_negative,
+            }
+            expected_errors = {
+                labels: count for labels, count in expected_errors.items() if count > 0
+            }
+            self.assertEqual(errors.to_dict(), expected_errors)
 
     def test_safe_output_schemas(self):
         audit = pd.DataFrame([{"check": "dataset.rows", "value": 2}])
@@ -756,8 +833,25 @@ class ProjectValidationTests(unittest.TestCase):
     def test_frozen_split_manifest_keeps_each_group_in_one_partition(self):
         split_frame = load_split_manifest(ROOT / "results" / "split_manifest.csv")
 
+        self.assertEqual(len(split_frame), 1395)
+        self.assertTrue(split_frame["hash"].is_unique)
+        self.assertFalse(split_frame["campaign_group"].isna().any())
         self.assertTrue(
             split_frame.groupby("campaign_group")["split"].nunique().eq(1).all()
+        )
+        group_has_2025 = split_frame.groupby("campaign_group")["date_year"].apply(
+            lambda years: years.eq(2025).any()
+        )
+        group_split = split_frame.groupby("campaign_group")["split"].first()
+        self.assertTrue(
+            group_has_2025.eq(group_split.eq("locked_2025_holdout")).all()
+        )
+        excluded_groups = group_split[group_split.eq("excluded_undated")].index
+        self.assertTrue(
+            split_frame[split_frame["campaign_group"].isin(excluded_groups)]
+            .groupby("campaign_group")["date_year"]
+            .apply(lambda years: years.isna().any())
+            .all()
         )
 
     def test_manifest_contains_no_invalid_hashes(self):

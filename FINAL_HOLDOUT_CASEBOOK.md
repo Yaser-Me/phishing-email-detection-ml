@@ -5,6 +5,10 @@ three manually reviewed cases are a deterministic score spread: the lowest
 false-negative score, midpoint false-negative score, and score nearest 0.5.
 They are sanitized summaries, not raw email publications.
 
+Terms described as supporting a class are correlational linear-model
+associations, not confirmed malicious indicators or independent evidence.
+They explain the review score only within this frozen model.
+
 ## FINAL-FN-LOW
 
 - Actual / predicted / score: phishing / legitimate / 0.201.

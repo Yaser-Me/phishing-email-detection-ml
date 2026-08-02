@@ -5,6 +5,10 @@ pre-2025 validation partition: 2 false positives and 6 false negatives. I
 manually reviewed each source record locally. The committed CSV contains only
 the reproducible sanitized summaries in `results/validation_triage.csv`.
 
+Terms described as supporting a class are correlational linear-model
+associations, not confirmed malicious indicators or independent evidence.
+They explain the review score only within this fitted development model.
+
 ## False positives
 
 ### VAL-FP-01
