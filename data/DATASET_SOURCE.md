@@ -71,8 +71,8 @@ These rules are frozen before the 2025 holdout is scored:
 5. A group containing both labels is quarantined and stops evaluation.
 6. If any dated group member is from 2025, the complete group moves to the
    locked final holdout.
-7. Undated messages outside a 2025 group are excluded from the temporal
-   experiment.
+7. Undated-only groups, and complete pre-2025 groups that mix dated and undated
+   messages, are excluded from the temporal experiment.
 8. Remaining pre-2025 groups are split into training and validation with
    `random_state=42`.
 

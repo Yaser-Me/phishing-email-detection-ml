@@ -14,7 +14,7 @@ Spanish-Language Phishing Detection Validation and Analyst Triage.
 ## Intended use
 
 Use the model review score to prioritize an analyst's review of a message. P1A
-documents the nine pre-2025 validation mistakes and the follow-up evidence an
+documents the eight pre-2025 validation mistakes and the follow-up evidence an
 analyst would need.
 
 > The model review score prioritizes analyst review. It is not proof that an email is malicious.
@@ -30,8 +30,8 @@ analyst would need.
 ## Development evidence
 
 The locked split uses pre-2025 training and validation records only. Logistic
-Regression recorded 0.944 accuracy, 0.917 balanced accuracy, 0.899 F1, 2 false
-positives, and 7 false negatives on 161 validation emails. The P1A command
+Regression recorded 0.953 accuracy, 0.938 balanced accuracy, 0.926 F1, 2 false
+positives, and 6 false negatives on 170 validation emails. The P1A command
 regenerates the sanitized error casebook data and confusion matrix.
 
 ## Final-holdout status

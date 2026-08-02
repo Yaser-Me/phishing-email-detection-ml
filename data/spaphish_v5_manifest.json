@@ -48,6 +48,21 @@
   "frozen_evaluation_rules": {
     "random_seed": 42,
     "holdout_year": 2025,
+    "prediction_fields": [
+      "subject",
+      "body"
+    ],
+    "text_cleanup": "NFKC, HTML entity decoding, residual HTML removal, and whitespace cleanup",
+    "word_tfidf_ngram_range": [
+      1,
+      2
+    ],
+    "word_tfidf_min_df": 2,
+    "word_tfidf_max_features": 15000,
+    "primary_model": "Logistic Regression",
+    "primary_model_class_weight": "balanced",
+    "primary_model_max_iter": 1000,
+    "decision_threshold": 0.5,
     "campaign_similarity": "character TF-IDF cosine similarity",
     "campaign_analyzer": "char_wb",
     "campaign_ngram_range": [
@@ -61,7 +76,7 @@
     "campaign_rule": "Connected messages at or above the threshold remain in one partition.",
     "conflict_rule": "A candidate campaign group containing both labels is quarantined and stops evaluation.",
     "temporal_rule": "If any dated member is from 2025, the complete group moves to the locked holdout.",
-    "undated_rule": "Undated messages outside a 2025 group are excluded from the temporal experiment.",
+    "undated_rule": "Undated-only groups and complete pre-2025 groups that mix dated and undated messages are excluded from the temporal experiment.",
     "validation_fraction_of_pre_2025_groups": 0.2
   }
 }

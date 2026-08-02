@@ -15,7 +15,7 @@ The final 2025 holdout remains locked and has not been scored.
 2. Review [DETECTION_CARD.md](DETECTION_CARD.md).
 3. Compare `results/development_metrics.csv` and
    `results/validation_triage_metrics.csv`.
-4. Inspect the nine sanitized cases in
+4. Inspect the eight sanitized cases in
    [VALIDATION_CASEBOOK.md](VALIDATION_CASEBOOK.md).
 5. Review the follow-up workflow in
    [PHISHING_TRIAGE_PLAYBOOK.md](PHISHING_TRIAGE_PLAYBOOK.md).
@@ -35,7 +35,7 @@ The final 2025 holdout remains locked and has not been scored.
 5. Fit text preprocessing only on the training partition.
 6. Compare a simple Logistic Regression model with Multinomial Naive Bayes on
    the pre-2025 development validation partition.
-7. Review all 2 false positives and 7 false negatives using sanitized case
+7. Review all 2 false positives and 6 false negatives using sanitized case
    cards and a text-versus-analyst-evidence workflow.
 8. Preserve the 2025 holdout until a later approved final evaluation.
 
@@ -79,23 +79,23 @@ The frozen temporal/group-aware split contains:
 
 | Partition | Legitimate | Phishing |
 |---|---:|---:|
-| Training | 458 | 237 |
-| Development validation | 114 | 47 |
+| Training | 458 | 225 |
+| Development validation | 114 | 56 |
 | Locked 2025 holdout | 92 | 423 |
-| Excluded because undated | 0 | 24 |
+| Excluded because undated or in a mixed undated group | 0 | 27 |
 
 On the pre-2025 development validation partition, Logistic Regression recorded
-0.944 accuracy, 0.917 balanced accuracy, 0.899 F1, 2 false positives, and 7
-false negatives. Multinomial Naive Bayes recorded 0.901 accuracy, 0.830
-balanced accuracy, 0.795 F1, 0 false positives, and 16 false negatives. These
+0.953 accuracy, 0.938 balanced accuracy, 0.926 F1, 2 false positives, and 6
+false negatives. Multinomial Naive Bayes recorded 0.912 accuracy, 0.866
+balanced accuracy, 0.845 F1, 0 false positives, and 15 false negatives. These
 are development results, not final or production results.
 
 The generated evidence is in `results/dataset_audit.csv`,
 `results/split_manifest.csv`, and `results/development_metrics.csv`.
 
 P1A repeats the Logistic Regression validation result without using the holdout:
-2 false positives, 7 false negatives, 0.944 accuracy, 0.917 balanced accuracy,
-and 0.899 F1. Its generated evidence is `results/validation_triage.csv`,
+2 false positives, 6 false negatives, 0.953 accuracy, 0.938 balanced accuracy,
+and 0.926 F1. Its generated evidence is `results/validation_triage.csv`,
 `results/validation_error_summary.csv`, and the development confusion matrix.
 The cases are sanitized summaries, not raw email publications.
 
@@ -145,13 +145,22 @@ Run the P1A development-only triage workflow:
 python phishing_validation.py --validation-triage
 ```
 
-It regenerates primary validation metrics, the nine reviewed sanitized case
+It regenerates primary validation metrics, the eight reviewed sanitized case
 records, an aggregate error summary, and a development confusion matrix. It
 does not put 2025 holdout records into fitting, prediction, or triage.
 
-The script refuses `--score-final-holdout` during P1A. Scoring the final holdout
-requires later P1B approval after model settings, threshold handling, and
-analyst case analysis are frozen.
+The `--score-final-holdout` command is reserved for one P1B final run after the
+model settings, threshold handling, and analyst case analysis are frozen.
+
+The frozen P1B command is:
+
+```powershell
+python phishing_validation.py --score-final-holdout
+```
+
+It fits the frozen Logistic Regression pipeline once on all permitted pre-2025
+development records, then scores the locked 2025 partition. It refuses a rerun
+after final predictions exist.
 
 ## Honest claims and limitations
 

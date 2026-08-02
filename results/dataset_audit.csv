@@ -48,10 +48,10 @@ campaign.phishing_multi_message_groups,88
 campaign.legitimate_rows_in_multi_groups,61
 campaign.phishing_rows_in_multi_groups,381
 split.train.legitimate,458
-split.train.phishing,237
+split.train.phishing,225
 split.validation.legitimate,114
-split.validation.phishing,47
+split.validation.phishing,56
 split.locked_2025_holdout.legitimate,92
 split.locked_2025_holdout.phishing,423
 split.excluded_undated.legitimate,0
-split.excluded_undated.phishing,24
+split.excluded_undated.phishing,27

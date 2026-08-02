@@ -22,11 +22,13 @@ from phishing_validation import (
     clean_visible_text,
     duplicate_statistics,
     load_manifest,
+    load_split_manifest,
     load_spaphish,
     normalized_duplicate_key,
     build_sanitized_validation_triage,
     fit_primary_validation_model,
     load_development_rows,
+    run_final_evaluation,
     run_development_evaluation,
     run_validation_triage,
     validate_spaphish,
@@ -92,6 +94,18 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(
             manifest["frozen_evaluation_rules"]["campaign_similarity_threshold"],
             CAMPAIGN_SIMILARITY_THRESHOLD,
+        )
+        self.assertEqual(
+            manifest["frozen_evaluation_rules"]["prediction_fields"],
+            ["subject", "body"],
+        )
+        self.assertEqual(
+            manifest["frozen_evaluation_rules"]["word_tfidf_max_features"],
+            15000,
+        )
+        self.assertEqual(
+            manifest["frozen_evaluation_rules"]["decision_threshold"],
+            0.5,
         )
 
         for item in manifest["files"]:
@@ -293,6 +307,94 @@ class ProjectValidationTests(unittest.TestCase):
         )
         self.assertTrue(FINAL_HOLDOUT_LOCKED)
 
+    def test_mixed_undated_campaign_group_is_completely_excluded(self):
+        df = make_test_frame(
+            [
+                {
+                    "subject": "Campaña relacionada",
+                    "body": "Mensaje fechado",
+                    "date": "01/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Campaña relacionada",
+                    "body": "Mensaje sin fecha",
+                    "date": None,
+                    "Label": 1,
+                },
+                {
+                    "subject": "Legítimo uno",
+                    "body": "Contenido uno",
+                    "date": "02/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Legítimo dos",
+                    "body": "Contenido dos",
+                    "date": "03/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Phishing uno",
+                    "body": "Contenido uno",
+                    "date": "04/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Phishing dos",
+                    "body": "Contenido dos",
+                    "date": "05/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Legítimo tres",
+                    "body": "Contenido tres",
+                    "date": "06/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Legítimo cuatro",
+                    "body": "Contenido cuatro",
+                    "date": "07/01/2024",
+                    "Label": 0,
+                },
+                {
+                    "subject": "Phishing tres",
+                    "body": "Contenido tres",
+                    "date": "08/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Phishing cuatro",
+                    "body": "Contenido cuatro",
+                    "date": "09/01/2024",
+                    "Label": 1,
+                },
+                {
+                    "subject": "Phishing final",
+                    "body": "Contenido final",
+                    "date": "01/01/2025",
+                    "Label": 1,
+                },
+            ]
+        )
+        groups = pd.Series(
+            [
+                "mixed", "mixed", "legit_1", "legit_2", "phish_1", "phish_2",
+                "legit_3", "legit_4", "phish_3", "phish_4", "holdout",
+            ]
+        )
+
+        split_frame = assign_temporal_splits(df, groups)
+
+        self.assertEqual(
+            set(split_frame.loc[split_frame["campaign_group"] == "mixed", "split"]),
+            {"excluded_undated"},
+        )
+        self.assertTrue(
+            split_frame.groupby("campaign_group")["split"].nunique().eq(1).all()
+        )
+
     def test_vectorizer_is_fitted_only_on_training_text(self):
         vectorizer, _, _ = vectorize_train_validation(
             pd.Series(["correo seguro común", "correo seguro común"]),
@@ -471,14 +573,14 @@ class ProjectValidationTests(unittest.TestCase):
                     "predicted_label": 1 if index < 2 else 0,
                     "model_review_score": index / 10,
                 }
-                for index in range(9)
+                for index in range(8)
             ]
         )
 
         triage = build_sanitized_validation_triage(validation_cases)
 
         self.assertEqual(list(triage.columns), SAFE_TRIAGE_COLUMNS)
-        self.assertEqual(len(triage), 9)
+        self.assertEqual(len(triage), 8)
         self.assertTrue(
             {"hash", "subject", "body", "urls"}.isdisjoint(triage.columns)
         )
@@ -498,6 +600,31 @@ class ProjectValidationTests(unittest.TestCase):
 
         self.assertTrue(forbidden.isdisjoint(PREDICTION_COLUMNS))
         self.assertTrue(set(ANNOTATION_COLUMNS).isdisjoint(PREDICTION_COLUMNS))
+
+    def test_final_model_fits_only_development_text(self):
+        rows = make_test_frame(
+            [
+                {"subject": "Aviso legítimo", "body": "mensaje seguro común", "date": "01/01/2024", "Label": 0},
+                {"subject": "Aviso legítimo", "body": "mensaje seguro común", "date": "02/01/2024", "Label": 0},
+                {"subject": "Aviso phishing", "body": "verifique cuenta urgente", "date": "03/01/2024", "Label": 1},
+                {"subject": "Aviso phishing", "body": "verifique cuenta urgente", "date": "04/01/2024", "Label": 1},
+                {"subject": "Validación legítima", "body": "mensaje seguro común", "date": "05/01/2024", "Label": 0},
+                {"subject": "Validación phishing", "body": "verifique cuenta urgente", "date": "06/01/2024", "Label": 1},
+                {"subject": "tokenunicosoloholdout", "body": "mensaje seguro", "date": "01/01/2025", "Label": 0},
+                {"subject": "tokenunicosoloholdout", "body": "cuenta urgente", "date": "02/01/2025", "Label": 1},
+            ]
+        )[["hash", "subject", "body", "Label"]]
+        rows["split"] = [
+            "train", "train", "train", "train", "validation", "validation",
+            "locked_2025_holdout", "locked_2025_holdout",
+        ]
+
+        metrics, predictions, _, _, artifacts = run_final_evaluation(rows)
+
+        self.assertEqual(metrics.loc[0, "partition"], "locked_2025_holdout")
+        self.assertEqual(len(predictions), 2)
+        self.assertTrue(artifacts["development_hashes"].isdisjoint(artifacts["holdout_hashes"]))
+        self.assertNotIn("tokenunicosoloholdout", artifacts["vectorizer"].vocabulary_)
 
     def test_safe_output_schemas(self):
         audit = pd.DataFrame([{"check": "dataset.rows", "value": 2}])
@@ -572,12 +699,19 @@ class ProjectValidationTests(unittest.TestCase):
             pd.read_csv(ROOT / "results" / "split_manifest.csv")
             .query("split == 'locked_2025_holdout'")["hash"]
         )
-        self.assertEqual(len(triage), 9)
-        self.assertEqual(int(summary["error_count"].sum()), 9)
-        self.assertEqual(int(confusion["count"].sum()), 161)
+        self.assertEqual(len(triage), 8)
+        self.assertEqual(int(summary["error_count"].sum()), 8)
+        self.assertEqual(int(confusion["count"].sum()), 170)
         self.assertTrue(artifacts["train_hashes"].isdisjoint(holdout_hashes))
         self.assertTrue(artifacts["validation_hashes"].isdisjoint(holdout_hashes))
-        self.assertEqual(metrics.loc[0, "false_negative"], 7)
+        self.assertEqual(metrics.loc[0, "false_negative"], 6)
+
+    def test_frozen_split_manifest_keeps_each_group_in_one_partition(self):
+        split_frame = load_split_manifest(ROOT / "results" / "split_manifest.csv")
+
+        self.assertTrue(
+            split_frame.groupby("campaign_group")["split"].nunique().eq(1).all()
+        )
 
     def test_manifest_contains_no_invalid_hashes(self):
         text = DEFAULT_MANIFEST.read_text(encoding="utf-8")

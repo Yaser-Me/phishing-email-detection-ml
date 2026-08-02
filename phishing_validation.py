@@ -31,6 +31,7 @@ DEFAULT_DATASET = ROOT / "data" / "external" / "spaphish" / "Spaphish dataset - 
 DEFAULT_MANIFEST = ROOT / "data" / "spaphish_v5_manifest.json"
 DEFAULT_RESULTS = ROOT / "results"
 DEFAULT_SPLIT_MANIFEST = DEFAULT_RESULTS / "split_manifest.csv"
+PRIVATE_FINAL_PREDICTIONS = ROOT / "data" / "derived" / "final_holdout_predictions.csv"
 
 RANDOM_SEED = 42
 HOLDOUT_YEAR = 2025
@@ -114,6 +115,7 @@ SAFE_TRIAGE_COLUMNS = [
     "model_review_score",
     "sanitized_excerpt",
     "selected_influential_terms",
+    "influential_term_direction",
     "visible_text_evidence",
     "likely_model_mistake",
     "evidence_not_available",
@@ -130,13 +132,20 @@ SAFE_CONFUSION_COLUMNS = [
     "predicted_label",
     "count",
 ]
+PRIVATE_FINAL_PREDICTION_COLUMNS = [
+    "hash",
+    "actual_label",
+    "predicted_label",
+    "model_review_score",
+]
 
-# These notes were manually reviewed from the nine pre-2025 validation errors.
+# These notes were manually reviewed from the eight pre-2025 validation errors.
 # They intentionally use no raw text, names, organizations, addresses, or URLs.
 TRIAGE_CASE_NOTES = {
     "VAL-FP-01": {
         "sanitized_excerpt": "[Redacted account-security code message with a self-service link.]",
         "selected_influential_terms": "cuenta; seguridad; clic",
+        "influential_term_direction": "The listed terms supported phishing; the observed URL token supported legitimate classification.",
         "visible_text_evidence": "Account-security wording, a code, and a self-service link are visible.",
         "likely_model_mistake": "Security and click language overlaps with phishing patterns.",
         "evidence_not_available": "Sender identity, link destination, authentication results, and user context.",
@@ -146,6 +155,7 @@ TRIAGE_CASE_NOTES = {
     "VAL-FP-02": {
         "sanitized_excerpt": "[Redacted payment-receipt message with transaction and total details.]",
         "selected_influential_terms": "pago; cuenta; transacción; tarjeta",
+        "influential_term_direction": "The listed terms supported phishing classification.",
         "visible_text_evidence": "Payment, transaction, account, and card wording are visible.",
         "likely_model_mistake": "Payment language can appear in both legitimate receipts and phishing lures.",
         "evidence_not_available": "Sender identity, payment history, link destination, and recipient expectation.",
@@ -153,67 +163,64 @@ TRIAGE_CASE_NOTES = {
         "limitation": "The text does not confirm whether a real payment occurred.",
     },
     "VAL-FN-01": {
-        "sanitized_excerpt": "[Redacted threatening message claiming account monitoring and personal harm.]",
-        "selected_influential_terms": "cuenta; hemos; seguridad",
-        "visible_text_evidence": "Threatening language, a claimed compromise, and pressure on the recipient are visible.",
-        "likely_model_mistake": "A long narrative with common words received a low review score.",
-        "evidence_not_available": "Sender, headers, payment request details, and related campaign reports.",
-        "recommended_review": "Escalate for threat and extortion review; preserve the message and check account exposure safely.",
-        "limitation": "The visible text cannot prove a compromise actually occurred.",
-    },
-    "VAL-FN-02": {
-        "sanitized_excerpt": "[Redacted promotional trial message with a price and several links.]",
-        "selected_influential_terms": "requerida; day; here",
-        "visible_text_evidence": "A low-cost trial offer, links, and persuasive marketing language are visible.",
+        "sanitized_excerpt": "[Redacted low-cost trial offer with several links.]",
+        "selected_influential_terms": "here; mail; drive",
+        "influential_term_direction": "'here' supported phishing; the listed common English terms and URL tokens supported legitimate classification.",
+        "visible_text_evidence": "A low-cost trial offer, several links, and persuasive marketing language are visible.",
         "likely_model_mistake": "The message resembles a normal newsletter or marketing message.",
         "evidence_not_available": "Sender reputation, destination domains, subscription history, and user expectation.",
         "recommended_review": "Review destinations and sender reputation before deciding whether it is an unwanted promotion or phishing.",
         "limitation": "Text alone cannot establish whether the offer is legitimate.",
     },
-    "VAL-FN-03": {
-        "sanitized_excerpt": "[Redacted urgent quotation request that refers to an attachment.]",
-        "selected_influential_terms": "solicitud; adjunto; cuenta",
-        "visible_text_evidence": "An urgent business request, a quotation request, and an attachment reference are visible.",
-        "likely_model_mistake": "Generic business wording can look legitimate to a text-only model.",
-        "evidence_not_available": "Sender domain, attachment type and hash, recipient relationship, and procurement context.",
-        "recommended_review": "Quarantine the attachment and verify the request through a known procurement contact.",
-        "limitation": "The text does not reveal the attachment content or sender legitimacy.",
+    "VAL-FN-02": {
+        "sanitized_excerpt": "[Redacted threatening message demanding cryptocurrency payment.]",
+        "selected_influential_terms": "cuenta; hemos; usd",
+        "influential_term_direction": "The listed terms supported phishing, but more common terms supported legitimate classification overall.",
+        "visible_text_evidence": "Threats, a claimed compromise, urgency, and a payment demand are visible.",
+        "likely_model_mistake": "A long narrative with many common words received a low review score.",
+        "evidence_not_available": "Sender, headers, payment-request details, and related campaign reports.",
+        "recommended_review": "Escalate for threat and extortion review; preserve the message and check account exposure safely.",
+        "limitation": "The visible text cannot prove a compromise actually occurred.",
     },
-    "VAL-FN-04": {
+    "VAL-FN-03": {
         "sanitized_excerpt": "[Redacted short invoice notice with an attachment and a password.]",
         "selected_influential_terms": "factura; archivo adjunto; archivo",
+        "influential_term_direction": "The listed terms supported phishing; other common message terms supported legitimate classification.",
         "visible_text_evidence": "An invoice reference, attachment reference, and password are visible.",
         "likely_model_mistake": "The short message has too little context for the model to separate it reliably.",
         "evidence_not_available": "Attachment file details, sender identity, invoice history, and recipient expectation.",
         "recommended_review": "Treat the attachment as suspicious until the sender and invoice are independently verified.",
         "limitation": "The visible text cannot show whether the attachment is harmful.",
     },
-    "VAL-FN-05": {
+    "VAL-FN-04": {
         "sanitized_excerpt": "[Redacted prize notice that requests personal details by email.]",
         "selected_influential_terms": "ganador; envíe; cuenta",
+        "influential_term_direction": "The listed terms supported phishing; several common terms supported legitimate classification.",
         "visible_text_evidence": "A prize claim and a request for personal details are visible.",
         "likely_model_mistake": "Mixed warning and prize language reduced the model review score.",
         "evidence_not_available": "Sender identity, reply-to address, message routing, and whether a contest was entered.",
-        "recommended_review": "Escalate for credential or personal-data collection review and verify through an official channel.",
+        "recommended_review": "Escalate for personal-data collection review and verify through an official channel.",
         "limitation": "The text does not prove who sent the message.",
     },
-    "VAL-FN-06": {
-        "sanitized_excerpt": "[Redacted card-activation notice that warns service will stop.]",
-        "selected_influential_terms": "tarjeta; cliente; seguridad",
-        "visible_text_evidence": "A card-service warning, activation request, and urgency are visible.",
-        "likely_model_mistake": "Familiar service language can resemble a legitimate account notice.",
-        "evidence_not_available": "Sender-domain alignment, linked destination, account status, and authentication results.",
-        "recommended_review": "Do not use message links; verify the account through the official service channel.",
-        "limitation": "The text cannot verify an actual account or service change.",
+    "VAL-FN-05": {
+        "sanitized_excerpt": "[Redacted unexpected personal message asking for a reply.]",
+        "selected_influential_terms": "tengo; contigo; por favor",
+        "influential_term_direction": "The listed terms supported phishing; greetings and date wording supported legitimate classification.",
+        "visible_text_evidence": "An unexpected personal contact and a request for a reply are visible.",
+        "likely_model_mistake": "The text contains few direct phishing indicators and resembles informal correspondence.",
+        "evidence_not_available": "Sender identity, prior relationship, reply-to address, routing, and campaign reports.",
+        "recommended_review": "Check whether the sender and relationship are expected before escalation.",
+        "limitation": "The text alone cannot establish malicious intent or the dataset label's full context.",
     },
-    "VAL-FN-07": {
-        "sanitized_excerpt": "[Redacted coupon and password-reset notice with account-safety wording.]",
-        "selected_influential_terms": "clic; seguridad; cuenta",
-        "visible_text_evidence": "A coupon offer, password-reset prompt, and account-safety wording are visible.",
-        "likely_model_mistake": "Brand-like account language overlaps with familiar legitimate service messages.",
-        "evidence_not_available": "Sender identity, destination domain, subscription history, and authentication results.",
-        "recommended_review": "Review sender and destination independently; do not reset credentials through the message.",
-        "limitation": "The visible text cannot confirm the message is from the claimed service.",
+    "VAL-FN-06": {
+        "sanitized_excerpt": "[Redacted invoice and payment-administration request.]",
+        "selected_influential_terms": "cfdi; factura; entrega; pago",
+        "influential_term_direction": "The listed terms supported phishing; a few common request terms supported legitimate classification.",
+        "visible_text_evidence": "Invoice, payment, delivery, and a request to reply through the email channel are visible.",
+        "likely_model_mistake": "Detailed business-administration language resembles a legitimate supplier message.",
+        "evidence_not_available": "Sender domain, recipient relationship, invoice history, and attachment or payment context.",
+        "recommended_review": "Verify the request through a known supplier contact before changing payment or invoice records.",
+        "limitation": "Text alone cannot confirm a real business relationship or payment request.",
     },
 }
 
@@ -299,20 +306,28 @@ def load_spaphish(data_path=DEFAULT_DATASET):
     return validate_spaphish(df)
 
 
-def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
-    """Load only the frozen training and validation records needed for P1A."""
+def load_split_manifest(split_path=DEFAULT_SPLIT_MANIFEST):
+    """Load the frozen split manifest and confirm group-level isolation."""
     split_frame = pd.read_csv(split_path)
     if list(split_frame.columns) != SAFE_SPLIT_COLUMNS:
         raise ValueError("The split manifest has an unexpected schema.")
+    if split_frame["hash"].duplicated().any():
+        raise ValueError("The split manifest contains duplicate record hashes.")
+    group_splits = split_frame.groupby("campaign_group")["split"].nunique()
+    if group_splits.gt(1).any():
+        raise ValueError("A campaign group crosses evaluation partitions.")
+    return split_frame
+
+
+def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
+    """Load only the frozen training and validation records needed for P1A."""
+    split_frame = load_split_manifest(split_path)
 
     development_split = split_frame[
         split_frame["split"].isin(["train", "validation"])
     ].copy()
     if development_split.empty:
         raise ValueError("The split manifest does not contain development records.")
-    if development_split["hash"].duplicated().any():
-        raise ValueError("The split manifest contains duplicate record hashes.")
-
     allowed_hashes = set(development_split["hash"])
     copied_rows = []
     for chunk in pd.read_csv(
@@ -342,6 +357,42 @@ def load_development_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MA
         raise ValueError("P1A attempted to load a non-development partition.")
 
     return development_rows
+
+
+def load_final_evaluation_rows(data_path=DEFAULT_DATASET, split_path=DEFAULT_SPLIT_MANIFEST):
+    """Load only permitted development rows and the locked 2025 holdout for P1B."""
+    split_frame = load_split_manifest(split_path)
+    allowed_splits = {"train", "validation", "locked_2025_holdout"}
+    evaluation_split = split_frame[split_frame["split"].isin(allowed_splits)].copy()
+    if not evaluation_split["split"].eq("locked_2025_holdout").any():
+        raise ValueError("The locked 2025 holdout is missing from the split manifest.")
+
+    allowed_hashes = set(evaluation_split["hash"])
+    copied_rows = []
+    for chunk in pd.read_csv(
+        data_path,
+        encoding="utf-8-sig",
+        usecols=["hash", "subject", "body", "Label"],
+        chunksize=200,
+    ):
+        evaluation_chunk = chunk[chunk["hash"].isin(allowed_hashes)].copy()
+        if not evaluation_chunk.empty:
+            copied_rows.append(evaluation_chunk)
+
+    evaluation_rows = pd.concat(copied_rows, ignore_index=True).merge(
+        evaluation_split[["hash", "split", "Label"]],
+        on="hash",
+        suffixes=("", "_manifest"),
+        validate="one_to_one",
+    )
+    if not evaluation_rows["Label"].eq(evaluation_rows["Label_manifest"]).all():
+        raise ValueError("The CSV labels do not match the frozen split manifest.")
+    evaluation_rows = evaluation_rows.drop(columns="Label_manifest")
+    if set(evaluation_rows["hash"]) != allowed_hashes:
+        raise ValueError("The external CSV does not match the frozen evaluation hashes.")
+    if evaluation_rows["split"].eq("excluded_undated").any():
+        raise ValueError("Undated excluded records cannot enter final evaluation.")
+    return evaluation_rows
 
 
 def clean_visible_text(subject, body):
@@ -514,13 +565,23 @@ def assign_temporal_splits(df, campaign_groups):
             "Candidate campaign groups contain conflicting labels and must be quarantined."
         )
 
-    latest_group_date = split_frame.groupby("campaign_group")["parsed_date"].max()
+    group_dates = split_frame.groupby("campaign_group")["parsed_date"]
+    latest_group_date = group_dates.max()
+    group_has_undated = group_dates.apply(lambda values: values.isna().any())
     holdout_groups = set(
         latest_group_date[latest_group_date.dt.year == HOLDOUT_YEAR].index
+    )
+    mixed_undated_groups = set(
+        group_has_undated[
+            group_has_undated
+            & latest_group_date.notna()
+            & (latest_group_date.dt.year < HOLDOUT_YEAR)
+        ].index
     )
     holdout_mask = split_frame["campaign_group"].isin(holdout_groups)
     dated_pre_2025_mask = (
         ~holdout_mask
+        & ~split_frame["campaign_group"].isin(mixed_undated_groups)
         & split_frame["parsed_date"].notna()
         & (split_frame["parsed_date"].dt.year < HOLDOUT_YEAR)
     )
@@ -551,12 +612,9 @@ def assign_temporal_splits(df, campaign_groups):
     ] = "validation"
     split_frame["date_year"] = split_frame["parsed_date"].dt.year.astype("Int64")
 
-    evaluated = split_frame[split_frame["split"].isin(["train", "validation"])]
-    overlap = (
-        evaluated.groupby("campaign_group")["split"].nunique().gt(1).sum()
-    )
-    if overlap:
-        raise ValueError("A campaign group crosses train and validation partitions.")
+    group_partition_counts = split_frame.groupby("campaign_group")["split"].nunique()
+    if group_partition_counts.gt(1).any():
+        raise ValueError("A campaign group crosses evaluation partitions.")
     holdout_years = split_frame.loc[
         split_frame["split"] == "locked_2025_holdout",
         "parsed_date",
@@ -737,13 +795,13 @@ def build_confusion_table(validation_cases):
     return pd.DataFrame(rows, columns=SAFE_CONFUSION_COLUMNS)
 
 
-def _model_metrics(model_name, actual, predicted, review_scores):
+def _model_metrics(model_name, actual, predicted, review_scores, partition="pre_2025_validation"):
     """Return one safe aggregate metrics row."""
     matrix = confusion_matrix(actual, predicted, labels=[0, 1])
     true_negative, false_positive, false_negative, true_positive = matrix.ravel()
     return {
         "model": model_name,
-        "partition": "pre_2025_validation",
+        "partition": partition,
         "accuracy": accuracy_score(actual, predicted),
         "balanced_accuracy": balanced_accuracy_score(actual, predicted),
         "precision": precision_score(actual, predicted, zero_division=0),
@@ -816,6 +874,64 @@ def run_development_evaluation(df, split_frame):
         ),
     }
     return metrics, artifacts
+
+
+def run_final_evaluation(evaluation_rows):
+    """Fit the frozen model on all development rows and score the locked holdout once."""
+    required_columns = {"hash", "subject", "body", "Label", "split"}
+    if not required_columns.issubset(evaluation_rows.columns):
+        raise ValueError("Final evaluation rows are missing required columns.")
+    if evaluation_rows["split"].eq("excluded_undated").any():
+        raise ValueError("Undated excluded records cannot enter final evaluation.")
+
+    development_mask = evaluation_rows["split"].isin(["train", "validation"])
+    holdout_mask = evaluation_rows["split"].eq("locked_2025_holdout")
+    if not development_mask.any() or not holdout_mask.any():
+        raise ValueError("Final evaluation requires development rows and a locked holdout.")
+
+    visible_text = combine_visible_text(evaluation_rows)
+    vectorizer, development_features, holdout_features = vectorize_train_validation(
+        visible_text.loc[development_mask],
+        visible_text.loc[holdout_mask],
+    )
+    model = LogisticRegression(
+        class_weight="balanced",
+        max_iter=1000,
+        random_state=RANDOM_SEED,
+    )
+    model.fit(development_features, evaluation_rows.loc[development_mask, "Label"])
+    predictions = model.predict(holdout_features)
+    review_scores = model.predict_proba(holdout_features)[:, 1]
+    holdout_labels = evaluation_rows.loc[holdout_mask, "Label"]
+    metrics = pd.DataFrame(
+        [
+            _model_metrics(
+                "Logistic Regression",
+                holdout_labels,
+                predictions,
+                review_scores,
+                partition="locked_2025_holdout",
+            )
+        ],
+        columns=SAFE_METRIC_COLUMNS,
+    )
+    prediction_rows = evaluation_rows.loc[holdout_mask, ["hash", "Label"]].copy()
+    prediction_rows = prediction_rows.rename(columns={"Label": "actual_label"})
+    prediction_rows["predicted_label"] = predictions
+    prediction_rows["model_review_score"] = review_scores
+    prediction_rows = prediction_rows[PRIVATE_FINAL_PREDICTION_COLUMNS]
+    confusion_table = build_confusion_table(
+        pd.DataFrame({"Label": holdout_labels, "predicted_label": predictions})
+    )
+    error_summary = build_error_summary(
+        pd.DataFrame({"Label": holdout_labels, "predicted_label": predictions})
+    )
+    return metrics, prediction_rows, error_summary, confusion_table, {
+        "vectorizer": vectorizer,
+        "model": model,
+        "development_hashes": set(evaluation_rows.loc[development_mask, "hash"]),
+        "holdout_hashes": set(evaluation_rows.loc[holdout_mask, "hash"]),
+    }
 
 
 def build_dataset_audit(df, campaign_groups, campaign_stats, split_frame):
@@ -979,6 +1095,91 @@ def write_validation_triage_results(
     plt.close(figure)
 
 
+def write_final_evaluation_results(
+    metrics,
+    prediction_rows,
+    error_summary,
+    confusion_table,
+    results_dir=DEFAULT_RESULTS,
+    private_predictions_path=PRIVATE_FINAL_PREDICTIONS,
+):
+    """Save one final result without publishing raw email text or addresses."""
+    results_path = Path(results_dir)
+    private_path = Path(private_predictions_path)
+    if list(metrics.columns) != SAFE_METRIC_COLUMNS:
+        raise ValueError("Unsafe final metric columns were requested.")
+    if list(prediction_rows.columns) != PRIVATE_FINAL_PREDICTION_COLUMNS:
+        raise ValueError("Unsafe private prediction columns were requested.")
+    if list(error_summary.columns) != SAFE_ERROR_SUMMARY_COLUMNS:
+        raise ValueError("Unsafe final error-summary columns were requested.")
+    if list(confusion_table.columns) != SAFE_CONFUSION_COLUMNS:
+        raise ValueError("Unsafe final confusion-matrix columns were requested.")
+
+    results_path.mkdir(parents=True, exist_ok=True)
+    private_path.parent.mkdir(parents=True, exist_ok=True)
+    prediction_rows.to_csv(private_path, index=False)
+    metrics.to_csv(results_path / "final_holdout_metrics.csv", index=False)
+    error_summary.to_csv(results_path / "final_holdout_error_summary.csv", index=False)
+    confusion_table.to_csv(results_path / "final_holdout_confusion_matrix.csv", index=False)
+
+    matrix = confusion_table.pivot(
+        index="actual_label",
+        columns="predicted_label",
+        values="count",
+    ).reindex(index=["legitimate", "phishing"], columns=["legitimate", "phishing"])
+    import matplotlib.pyplot as plt
+
+    figure, axis = plt.subplots(figsize=(5, 4))
+    image = axis.imshow(matrix, cmap="Blues")
+    figure.colorbar(image, ax=axis, label="Email records")
+    axis.set_title("Locked 2025 holdout confusion matrix")
+    axis.set_xlabel("Predicted label")
+    axis.set_ylabel("Actual label")
+    axis.set_xticks([0, 1], ["Legitimate", "Phishing"])
+    axis.set_yticks([0, 1], ["Legitimate", "Phishing"])
+    for row in range(2):
+        for column in range(2):
+            axis.text(column, row, int(matrix.iloc[row, column]), ha="center", va="center")
+    figure.tight_layout()
+    figure.savefig(results_path / "final_holdout_confusion_matrix.png", dpi=150)
+    plt.close(figure)
+
+
+def run_final_evaluation_once(
+    data_path=DEFAULT_DATASET,
+    manifest_path=DEFAULT_MANIFEST,
+    split_path=DEFAULT_SPLIT_MANIFEST,
+    results_dir=DEFAULT_RESULTS,
+    private_predictions_path=PRIVATE_FINAL_PREDICTIONS,
+):
+    """Run P1B once after the configuration and P1A evidence are frozen."""
+    final_outputs = [
+        Path(private_predictions_path),
+        Path(results_dir) / "final_holdout_metrics.csv",
+        Path(results_dir) / "final_holdout_error_summary.csv",
+        Path(results_dir) / "final_holdout_confusion_matrix.csv",
+    ]
+    if any(path.exists() for path in final_outputs):
+        raise ValueError(
+            "Final holdout predictions already exist. P1B does not permit a rerun."
+        )
+
+    file_checks = verify_external_files(Path(data_path).parent, manifest_path)
+    evaluation_rows = load_final_evaluation_rows(data_path, split_path)
+    metrics, prediction_rows, error_summary, confusion_table, artifacts = (
+        run_final_evaluation(evaluation_rows)
+    )
+    write_final_evaluation_results(
+        metrics,
+        prediction_rows,
+        error_summary,
+        confusion_table,
+        results_dir,
+        private_predictions_path,
+    )
+    return file_checks, metrics, error_summary, confusion_table, artifacts
+
+
 def run_validation_triage(
     data_path=DEFAULT_DATASET,
     manifest_path=DEFAULT_MANIFEST,
@@ -1024,16 +1225,14 @@ def run_p0(data_path=DEFAULT_DATASET, manifest_path=DEFAULT_MANIFEST, results_di
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Run SpaPhish v5 P0 validation without scoring the final holdout."
-    )
+    parser = argparse.ArgumentParser(description="Run SpaPhish v5 validation checks.")
     parser.add_argument("--data", type=Path, default=DEFAULT_DATASET)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
     parser.add_argument(
         "--score-final-holdout",
         action="store_true",
-        help="Reserved for P1. P0 refuses this action.",
+        help="Run the approved P1B final evaluation exactly once.",
     )
     parser.add_argument(
         "--validation-triage",
@@ -1042,10 +1241,25 @@ def main():
     )
     args = parser.parse_args()
 
-    if args.score_final_holdout and FINAL_HOLDOUT_LOCKED:
-        raise SystemExit(
-            "The 2025 holdout is locked during P1A. P1B approval is required."
+    if args.score_final_holdout:
+        file_checks, metrics, error_summary, confusion_table, _ = run_final_evaluation_once(
+            args.data,
+            args.manifest,
+            DEFAULT_SPLIT_MANIFEST,
+            args.results_dir,
         )
+        print("===============================")
+        print("SpaPhish P1B Final Evaluation")
+        print("===============================")
+        print("Verified files:", int(file_checks["matches"].sum()))
+        print("\nLocked 2025 holdout metrics:")
+        print(metrics.round(4).to_string(index=False))
+        print("\nLocked 2025 holdout error summary:")
+        print(error_summary.to_string(index=False))
+        print("\nLocked 2025 holdout confusion matrix:")
+        print(confusion_table.to_string(index=False))
+        print("\nFinal predictions were generated once and saved in ignored private storage.")
+        return
 
     if args.validation_triage:
         file_checks, metrics, triage, error_summary, _, _ = run_validation_triage(
