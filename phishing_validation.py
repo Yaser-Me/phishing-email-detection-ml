@@ -899,7 +899,7 @@ def _model_metrics(model_name, actual, predicted, review_scores, partition="pre_
 def run_development_evaluation(df, split_frame):
     """Train and evaluate only on the pre-2025 development partitions."""
     if list(PREDICTION_COLUMNS) != ["subject", "body"]:
-        raise ValueError("P0 prediction columns have changed.")
+        raise ValueError("Development prediction columns have changed.")
 
     train_mask = split_frame["split"].eq("train")
     validation_mask = split_frame["split"].eq("validation")
@@ -1013,7 +1013,7 @@ def run_final_evaluation(evaluation_rows):
     }
 
 
-def build_dataset_audit(df, campaign_groups, campaign_stats, split_frame):
+def build_dataset_audit(df, campaign_stats, split_frame):
     """Build the dataset audit from the verified CSV."""
     exact_keys = df.apply(
         lambda row: exact_duplicate_key(row["subject"], row["body"]),
@@ -1111,7 +1111,7 @@ def build_dataset_audit(df, campaign_groups, campaign_stats, split_frame):
     )
 
 
-def write_p0_results(audit, split_frame, metrics, results_dir=DEFAULT_RESULTS):
+def write_development_results(audit, split_frame, metrics, results_dir=DEFAULT_RESULTS):
     """Write only aggregate or identifier-only dataset-audit evidence."""
     results_path = Path(results_dir)
     results_path.mkdir(parents=True, exist_ok=True)
@@ -1345,7 +1345,11 @@ def run_validation_triage(
     return file_checks, metrics, triage, error_summary, confusion_table, artifacts
 
 
-def run_p0(data_path=DEFAULT_DATASET, manifest_path=DEFAULT_MANIFEST, results_dir=DEFAULT_RESULTS):
+def run_development_workflow(
+    data_path=DEFAULT_DATASET,
+    manifest_path=DEFAULT_MANIFEST,
+    results_dir=DEFAULT_RESULTS,
+):
     """Run the complete dataset audit and development evaluation."""
     external_dir = Path(data_path).parent
     file_checks = verify_external_files(external_dir, manifest_path)
@@ -1353,8 +1357,8 @@ def run_p0(data_path=DEFAULT_DATASET, manifest_path=DEFAULT_MANIFEST, results_di
     campaign_groups, campaign_stats = build_campaign_groups(df)
     split_frame = assign_temporal_splits(df, campaign_groups)
     metrics, artifacts = run_development_evaluation(df, split_frame)
-    audit = build_dataset_audit(df, campaign_groups, campaign_stats, split_frame)
-    write_p0_results(audit, split_frame, metrics, results_dir)
+    audit = build_dataset_audit(df, campaign_stats, split_frame)
+    write_development_results(audit, split_frame, metrics, results_dir)
     return file_checks, audit, split_frame, metrics, artifacts
 
 
@@ -1435,7 +1439,7 @@ def main():
         print("\nThe 2025 holdout was not scored or included in triage.")
         return
 
-    file_checks, audit, split_frame, metrics, _ = run_p0(
+    file_checks, audit, split_frame, metrics, _ = run_development_workflow(
         args.data,
         args.manifest,
         args.results_dir,

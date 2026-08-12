@@ -54,13 +54,13 @@ from phishing_validation import (
     vectorize_train_validation,
     verify_external_files,
     write_final_evaluation_results,
-    write_p0_results,
+    write_development_results,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK = ROOT / "phishing_email_detection.ipynb"
-FINAL_CASEBOOK = ROOT / "FINAL_HOLDOUT_CASEBOOK.md"
+ERROR_CASEBOOK = ROOT / "ERROR_CASEBOOK.md"
 COMPARISON = ROOT / "results" / "development_final_comparison.csv"
 
 
@@ -579,7 +579,7 @@ class ProjectValidationTests(unittest.TestCase):
             artifacts["vectorizer"].vocabulary_,
         )
 
-    def test_p1a_loader_returns_only_development_rows(self):
+    def test_loader_returns_only_development_rows(self):
         split = pd.DataFrame(
             [
                 {
@@ -622,7 +622,7 @@ class ProjectValidationTests(unittest.TestCase):
                 {
                     "hash": "holdout_hash",
                     "subject": "holdout secret",
-                    "body": "This text must not enter P1A.",
+                    "body": "This text must not enter development evaluation.",
                     "Label": 1,
                 },
             ]
@@ -640,7 +640,7 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertNotIn("holdout_hash", set(development_rows["hash"]))
         self.assertNotIn("holdout secret", " ".join(development_rows["subject"]))
 
-    def test_p1a_primary_model_refuses_non_development_split(self):
+    def test_primary_model_refuses_non_development_split(self):
         rows = make_test_frame(
             [
                 {
@@ -760,8 +760,8 @@ class ProjectValidationTests(unittest.TestCase):
                 empty_confusion,
             )
 
-    def test_final_casebook_contains_no_raw_contact_or_url_text(self):
-        text = FINAL_CASEBOOK.read_text(encoding="utf-8")
+    def test_error_casebook_contains_no_raw_contact_or_url_text(self):
+        text = ERROR_CASEBOOK.read_text(encoding="utf-8")
 
         self.assertNotRegex(text, r"https?://|www\.")
         self.assertNotRegex(text, r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+")
@@ -896,7 +896,7 @@ class ProjectValidationTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            write_p0_results(audit, split, metrics, temp_dir)
+            write_development_results(audit, split, metrics, temp_dir)
             saved_split = pd.read_csv(Path(temp_dir) / "split_manifest.csv")
             saved_metrics = pd.read_csv(
                 Path(temp_dir) / "development_metrics.csv"
@@ -923,7 +923,7 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(int(df["date"].isna().sum()), 24)
 
     @unittest.skipUnless(DEFAULT_DATASET.exists(), "SpaPhish external data not available")
-    def test_p1a_triage_is_development_only_and_sanitized(self):
+    def test_validation_triage_is_development_only_and_sanitized(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             _, metrics, triage, summary, confusion, artifacts = run_validation_triage(
                 results_dir=temp_dir

@@ -9,7 +9,12 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
 
     steps:
@@ -26,7 +31,11 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Confirm raw data is absent
-        run: test -z "$(git ls-files data/external data/private data/derived)"
+        run: >-
+          python -c "import subprocess;
+          tracked = subprocess.check_output(['git', 'ls-files'], text=True).splitlines();
+          blocked = [path for path in tracked if path.startswith(('data/external/', 'data/private/', 'data/derived/'))];
+          assert not blocked, f'Raw or private data is tracked: {blocked}'"
 
       - name: Run validation tests
         run: python -m unittest discover -s tests -v
